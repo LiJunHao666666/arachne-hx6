@@ -1,0 +1,23 @@
+# G1 kinematic standing pose for joint_state_publisher(_gui).
+# Jazzy reads mapped parameters as zeros.<joint_name> (radians).
+# Display values only; not a hardware calibration.
+/**:
+  ros__parameters:
+    zeros.lf_coxa_joint: -0.30
+    zeros.lf_femur_joint: 0.50
+    zeros.lf_tibia_joint: 1.00
+    zeros.lm_coxa_joint: 0.00
+    zeros.lm_femur_joint: 0.50
+    zeros.lm_tibia_joint: 1.00
+    zeros.lr_coxa_joint: 0.30
+    zeros.lr_femur_joint: 0.50
+    zeros.lr_tibia_joint: 1.00
+    zeros.rf_coxa_joint: 0.30
+    zeros.rf_femur_joint: 0.50
+    zeros.rf_tibia_joint: 1.00
+    zeros.rm_coxa_joint: 0.00
+    zeros.rm_femur_joint: 0.50
+    zeros.rm_tibia_joint: 1.00
+    zeros.rr_coxa_joint: -0.30
+    zeros.rr_femur_joint: 0.50
+    zeros.rr_tibia_joint: 1.00

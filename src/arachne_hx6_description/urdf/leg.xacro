@@ -1,0 +1,129 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- One hexapod leg: coxa (yaw), femur (pitch), tibia (pitch), plus a foot. -->
+
+  <xacro:macro name="hexapod_leg" params="prefix x y z yaw material">
+    <joint name="${prefix}_coxa_joint" type="revolute">
+      <parent link="base_link"/>
+      <child link="${prefix}_coxa"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 ${yaw}"/>
+      <axis xyz="0 0 1"/>
+      <limit
+        lower="${coxa_lower}"
+        upper="${coxa_upper}"
+        effort="${coxa_effort}"
+        velocity="${coxa_velocity}"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+    <link name="${prefix}_coxa">
+      <visual>
+        <origin xyz="${coxa_length / 2.0} 0 0" rpy="0 ${pi / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="${coxa_radius}" length="${coxa_length}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${coxa_length / 2.0} 0 0" rpy="0 ${pi / 2.0} 0"/>
+        <geometry>
+          <cylinder radius="${coxa_radius}" length="${coxa_length}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial_x
+        mass="${coxa_mass}"
+        radius="${coxa_radius}"
+        length="${coxa_length}"
+        xyz="${coxa_length / 2.0} 0 0"/>
+    </link>
+
+    <joint name="${prefix}_femur_joint" type="revolute">
+      <parent link="${prefix}_coxa"/>
+      <child link="${prefix}_femur"/>
+      <origin xyz="${coxa_length} 0 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit
+        lower="${femur_lower}"
+        upper="${femur_upper}"
+        effort="${femur_effort}"
+        velocity="${femur_velocity}"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+    <link name="${prefix}_femur">
+      <visual>
+        <origin xyz="${femur_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${femur_length} ${femur_width} ${femur_height}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${femur_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${femur_length} ${femur_width} ${femur_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial
+        mass="${femur_mass}"
+        x="${femur_length}"
+        y="${femur_width}"
+        z="${femur_height}"
+        xyz="${femur_length / 2.0} 0 0"/>
+    </link>
+
+    <joint name="${prefix}_tibia_joint" type="revolute">
+      <parent link="${prefix}_femur"/>
+      <child link="${prefix}_tibia"/>
+      <origin xyz="${femur_length} 0 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit
+        lower="${tibia_lower}"
+        upper="${tibia_upper}"
+        effort="${tibia_effort}"
+        velocity="${tibia_velocity}"/>
+      <dynamics damping="${joint_damping}" friction="${joint_friction}"/>
+    </joint>
+    <link name="${prefix}_tibia">
+      <visual>
+        <origin xyz="${tibia_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${tibia_length} ${tibia_width} ${tibia_height}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="${tibia_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${tibia_length} ${tibia_width} ${tibia_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial
+        mass="${tibia_mass}"
+        x="${tibia_length}"
+        y="${tibia_width}"
+        z="${tibia_height}"
+        xyz="${tibia_length / 2.0} 0 0"/>
+    </link>
+
+    <joint name="${prefix}_foot_joint" type="fixed">
+      <parent link="${prefix}_tibia"/>
+      <child link="${prefix}_foot"/>
+      <origin xyz="${tibia_length} 0 0" rpy="0 0 0"/>
+    </joint>
+    <link name="${prefix}_foot">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${foot_radius}"/>
+        </geometry>
+        <material name="${material}"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius="${foot_radius}"/>
+        </geometry>
+      </collision>
+      <xacro:sphere_inertial mass="${foot_mass}" radius="${foot_radius}"/>
+    </link>
+  </xacro:macro>
+</robot>

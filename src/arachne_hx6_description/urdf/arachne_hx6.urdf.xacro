@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="arachne_hx6">
+  <!--
+    Arachne-HX6 G1 digital skeleton.
+    Non-weaponized hexapod + hexarotor visual model for RViz.
+    Side bays are non-launching sensor/rescue placeholders only.
+  -->
+
+  <!-- Body -->
+  <xacro:property name="body_length" value="0.40"/>
+  <xacro:property name="body_width" value="0.30"/>
+  <xacro:property name="body_height" value="0.10"/>
+  <xacro:property name="body_mass" value="4.50"/>
+
+  <!-- Leg segments -->
+  <xacro:property name="coxa_length" value="0.060"/>
+  <xacro:property name="coxa_radius" value="0.016"/>
+  <xacro:property name="coxa_mass" value="0.080"/>
+  <xacro:property name="femur_length" value="0.125"/>
+  <xacro:property name="femur_width" value="0.026"/>
+  <xacro:property name="femur_height" value="0.020"/>
+  <xacro:property name="femur_mass" value="0.120"/>
+  <xacro:property name="tibia_length" value="0.145"/>
+  <xacro:property name="tibia_width" value="0.020"/>
+  <xacro:property name="tibia_height" value="0.016"/>
+  <xacro:property name="tibia_mass" value="0.100"/>
+  <xacro:property name="foot_radius" value="0.015"/>
+  <xacro:property name="foot_mass" value="0.025"/>
+
+  <!-- Leg mounts: left +, right -; front / mid / rear along +X. -->
+  <xacro:property name="leg_mount_x_front" value="0.16"/>
+  <xacro:property name="leg_mount_x_mid" value="0.0"/>
+  <xacro:property name="leg_mount_x_rear" value="-0.16"/>
+  <xacro:property name="leg_mount_y" value="${body_width / 2.0}"/>
+  <xacro:property name="leg_mount_z" value="-0.015"/>
+  <xacro:property name="leg_yaw_front" value="${pi / 4.0}"/>
+  <xacro:property name="leg_yaw_mid" value="${pi / 2.0}"/>
+  <xacro:property name="leg_yaw_rear" value="${3.0 * pi / 4.0}"/>
+
+  <!--
+    Joint limits for fold / unfold / lift demos.
+    Coxa yaw swings the hip. Femur/tibia pitch: + folds down, - lifts.
+  -->
+  <xacro:property name="coxa_lower" value="-0.96"/>
+  <xacro:property name="coxa_upper" value="0.96"/>
+  <xacro:property name="femur_lower" value="-1.48"/>
+  <xacro:property name="femur_upper" value="1.22"/>
+  <xacro:property name="tibia_lower" value="-0.26"/>
+  <xacro:property name="tibia_upper" value="2.18"/>
+  <xacro:property name="coxa_effort" value="8.0"/>
+  <xacro:property name="femur_effort" value="10.0"/>
+  <xacro:property name="tibia_effort" value="8.0"/>
+  <xacro:property name="coxa_velocity" value="2.5"/>
+  <xacro:property name="femur_velocity" value="2.5"/>
+  <xacro:property name="tibia_velocity" value="2.5"/>
+  <xacro:property name="joint_damping" value="0.05"/>
+  <xacro:property name="joint_friction" value="0.01"/>
+
+  <!-- Planar X-hex visual frame, fixed to the body. -->
+  <xacro:property name="hex_hub_radius" value="0.070"/>
+  <xacro:property name="hex_hub_height" value="0.012"/>
+  <xacro:property name="hex_hub_mass" value="0.080"/>
+  <xacro:property name="hex_deck_offset" value="0.008"/>
+  <xacro:property name="hex_hub_z" value="${body_height / 2.0 + hex_deck_offset}"/>
+  <xacro:property name="hex_arm_span" value="0.30"/>
+  <xacro:property name="hex_arm_length" value="${hex_arm_span - hex_hub_radius}"/>
+  <xacro:property name="hex_arm_width" value="0.016"/>
+  <xacro:property name="hex_arm_height" value="0.010"/>
+  <xacro:property name="hex_arm_mass" value="0.040"/>
+  <xacro:property name="hex_rotor_radius" value="0.060"/>
+  <xacro:property name="hex_rotor_height" value="0.008"/>
+  <xacro:property name="hex_rotor_mass" value="0.030"/>
+  <xacro:property name="hex_rotor_z_offset" value="0.010"/>
+  <xacro:property name="hex_yaw_1" value="${30.0 * pi / 180.0}"/>
+  <xacro:property name="hex_yaw_2" value="${90.0 * pi / 180.0}"/>
+  <xacro:property name="hex_yaw_3" value="${150.0 * pi / 180.0}"/>
+  <xacro:property name="hex_yaw_4" value="${210.0 * pi / 180.0}"/>
+  <xacro:property name="hex_yaw_5" value="${270.0 * pi / 180.0}"/>
+  <xacro:property name="hex_yaw_6" value="${330.0 * pi / 180.0}"/>
+
+  <!-- Forward-facing camera placeholder -->
+  <xacro:property name="camera_size_x" value="0.024"/>
+  <xacro:property name="camera_size_y" value="0.036"/>
+  <xacro:property name="camera_size_z" value="0.022"/>
+  <xacro:property name="camera_mass" value="0.050"/>
+  <xacro:property name="camera_lens_radius" value="0.008"/>
+  <xacro:property name="camera_lens_length" value="0.010"/>
+  <xacro:property name="camera_x" value="${body_length / 2.0 + camera_size_x / 2.0}"/>
+  <xacro:property name="camera_z" value="0.018"/>
+
+  <!-- Non-launching left/right sensor_pod bays. No launcher or targeting. -->
+  <xacro:property name="sensor_pod_size_x" value="0.080"/>
+  <xacro:property name="sensor_pod_size_y" value="0.035"/>
+  <xacro:property name="sensor_pod_size_z" value="0.040"/>
+  <xacro:property name="sensor_pod_mass" value="0.080"/>
+  <xacro:property name="sensor_pod_y" value="${body_width / 2.0 + sensor_pod_size_y / 2.0}"/>
+  <xacro:property name="sensor_pod_z" value="0.022"/>
+
+  <xacro:include filename="materials.xacro"/>
+  <xacro:include filename="leg.xacro"/>
+  <xacro:include filename="hexarotor.xacro"/>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${body_length} ${body_width} ${body_height}"/>
+      </geometry>
+      <material name="body_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${body_length} ${body_width} ${body_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}"/>
+  </link>
+
+  <xacro:hexapod_leg
+    prefix="lf"
+    x="${leg_mount_x_front}"
+    y="${leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${leg_yaw_front}"
+    material="left_leg_color"/>
+  <xacro:hexapod_leg
+    prefix="lm"
+    x="${leg_mount_x_mid}"
+    y="${leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${leg_yaw_mid}"
+    material="left_leg_color"/>
+  <xacro:hexapod_leg
+    prefix="lr"
+    x="${leg_mount_x_rear}"
+    y="${leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${leg_yaw_rear}"
+    material="left_leg_color"/>
+  <xacro:hexapod_leg
+    prefix="rf"
+    x="${leg_mount_x_front}"
+    y="${-leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${-leg_yaw_front}"
+    material="right_leg_color"/>
+  <xacro:hexapod_leg
+    prefix="rm"
+    x="${leg_mount_x_mid}"
+    y="${-leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${-leg_yaw_mid}"
+    material="right_leg_color"/>
+  <xacro:hexapod_leg
+    prefix="rr"
+    x="${leg_mount_x_rear}"
+    y="${-leg_mount_y}"
+    z="${leg_mount_z}"
+    yaw="${-leg_yaw_rear}"
+    material="right_leg_color"/>
+
+  <xacro:hexarotor_x_skeleton/>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${camera_x} 0 ${camera_z}" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${camera_size_x} ${camera_size_y} ${camera_size_z}"/>
+      </geometry>
+      <material name="camera_color"/>
+    </visual>
+    <visual>
+      <origin xyz="${camera_size_x / 2.0 + camera_lens_length / 2.0} 0 0" rpy="0 ${pi / 2.0} 0"/>
+      <geometry>
+        <cylinder radius="${camera_lens_radius}" length="${camera_lens_length}"/>
+      </geometry>
+      <material name="camera_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${camera_size_x} ${camera_size_y} ${camera_size_z}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial
+      mass="${camera_mass}"
+      x="${camera_size_x}"
+      y="${camera_size_y}"
+      z="${camera_size_z}"/>
+  </link>
+
+  <joint name="left_sensor_pod_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="left_sensor_pod"/>
+    <origin xyz="0 ${sensor_pod_y} ${sensor_pod_z}" rpy="0 0 0"/>
+  </joint>
+  <link name="left_sensor_pod">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${sensor_pod_size_x} ${sensor_pod_size_y} ${sensor_pod_size_z}"/>
+      </geometry>
+      <material name="sensor_pod_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${sensor_pod_size_x} ${sensor_pod_size_y} ${sensor_pod_size_z}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial
+      mass="${sensor_pod_mass}"
+      x="${sensor_pod_size_x}"
+      y="${sensor_pod_size_y}"
+      z="${sensor_pod_size_z}"/>
+  </link>
+
+  <joint name="right_sensor_pod_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="right_sensor_pod"/>
+    <origin xyz="0 ${-sensor_pod_y} ${sensor_pod_z}" rpy="0 0 0"/>
+  </joint>
+  <link name="right_sensor_pod">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${sensor_pod_size_x} ${sensor_pod_size_y} ${sensor_pod_size_z}"/>
+      </geometry>
+      <material name="sensor_pod_color"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${sensor_pod_size_x} ${sensor_pod_size_y} ${sensor_pod_size_z}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial
+      mass="${sensor_pod_mass}"
+      x="${sensor_pod_size_x}"
+      y="${sensor_pod_size_y}"
+      z="${sensor_pod_size_z}"/>
+  </link>
+</robot>
