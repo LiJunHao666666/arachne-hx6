@@ -9,6 +9,7 @@ import math
 from pathlib import Path
 
 import pytest
+import yaml
 
 from arachne_hx6_analysis.cli import main
 from arachne_hx6_analysis.model import (
@@ -34,11 +35,11 @@ from arachne_hx6_analysis.model import (
     hover_thrust_per_motor_n,
     ideal_induced_power_w,
     inches_to_metres,
-    max_thrust_per_motor_n,
     maximum_non_battery_mass_for_closure_kg,
     min_motor_center_radius_m,
     n1_burden_increase_fraction,
     required_battery_mass_kg,
+    required_thrust_per_motor_at_target_tw_n,
     rotor_disk_area_m2,
     rotor_envelope_diameter_m,
     total_rotor_disk_area_m2,
@@ -70,8 +71,8 @@ _CLOSED_MASS_FIELDS = (
     'hover_thrust_kgf',
     'hover_thrust_per_motor_n',
     'hover_thrust_per_motor_kgf',
-    'max_thrust_per_motor_n',
-    'max_thrust_per_motor_kgf',
+    'required_thrust_per_motor_at_target_tw_n',
+    'required_thrust_per_motor_at_target_tw_kgf',
     'disk_loading_n_m2',
     'disk_loading_kg_m2',
     'ideal_induced_power_w',
@@ -80,11 +81,55 @@ _CLOSED_MASS_FIELDS = (
     'battery_bus_current_a',
     'n1_hover_thrust_per_remaining_motor_n',
     'n1_hover_thrust_per_remaining_motor_kgf',
-    'n1_max_thrust_per_remaining_motor_n',
-    'n1_max_thrust_per_remaining_motor_kgf',
+    'n1_required_thrust_per_remaining_motor_at_target_tw_n',
+    'n1_required_thrust_per_remaining_motor_at_target_tw_kgf',
     'residual_kg',
     'battery_mass_fraction',
 )
+
+_FROZEN_ENERGY_MASS_CLOSURE_STATUS = {
+    'conservative': {
+        ('g1_placeholder', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('g1_placeholder', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('g1_placeholder', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('planned', 12.0): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('planned', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('growth', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('growth', 12.0): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('growth', 15.0): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+    },
+    'nominal': {
+        ('g1_placeholder', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('g1_placeholder', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('g1_placeholder', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('planned', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('growth', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('growth', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('growth', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+    },
+    'optimistic': {
+        ('g1_placeholder', 4.7): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('g1_placeholder', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('g1_placeholder', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 4.7): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('planned', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('growth', 4.7): STATUS_ENERGY_MASS_CLOSURE_INFEASIBLE,
+        ('growth', 12.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+        ('growth', 15.0): STATUS_CONDITIONAL_ENERGY_CLOSURE,
+    },
+}
+
+
+def _write_mutated_config(tmp_path, mutate):
+    raw = yaml.safe_load(_CONFIG_PATH.read_text(encoding='utf-8'))
+    mutate(raw)
+    path = tmp_path / 'mutated_propulsion.yaml'
+    path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding='utf-8')
+    return path
 
 
 @pytest.fixture(scope='module')
@@ -118,8 +163,10 @@ def test_thrust_allocation():
     assert hover_thrust_per_motor_n(mass_kg, gravity, 6) == pytest.approx(10.0)
 
 
-def test_thrust_to_weight_max_thrust():
-    assert max_thrust_per_motor_n(6.0, 10.0, 6, 1.8) == pytest.approx(18.0)
+def test_thrust_to_weight_required_thrust():
+    assert required_thrust_per_motor_at_target_tw_n(
+        6.0, 10.0, 6, 1.8
+    ) == pytest.approx(18.0)
 
 
 def test_ideal_induced_power_formula():
@@ -279,8 +326,10 @@ def test_n1_hexarotor_burden_is_20_percent(nominal_rows):
             assert row.n1_hover_thrust_per_remaining_motor_n == pytest.approx(
                 row.hover_thrust_per_motor_n * 1.20
             )
-            assert row.n1_max_thrust_per_remaining_motor_n == pytest.approx(
-                row.max_thrust_per_motor_n * 6.0 / 5.0
+            assert row.n1_required_thrust_per_remaining_motor_at_target_tw_n == (
+                pytest.approx(
+                    row.required_thrust_per_motor_at_target_tw_n * 6.0 / 5.0
+                )
             )
 
 
@@ -397,7 +446,20 @@ def test_reports_contain_analysis_only_banners(config, nominal_rows, tmp_path):
         assert STATUS_NOT_FOR_PROCUREMENT in text
     payload = json.loads(json_text)
     assert payload['overall_propulsion_feasibility'] == STATUS_OVERALL_UNDETERMINED
-    assert payload['any_conditional_candidate'] is False
+    assert payload['any_conditional_candidate_nominal'] is False
+    assert payload['combined_current_baseline_gate_summary_nominal'][
+        'any_conditional_candidate'
+    ] is False
+    assert payload['any_conditional_candidate_by_uncertainty'] == {
+        'conservative': False,
+        'nominal': False,
+        'optimistic': True,
+    }
+    assert set(payload['combined_current_baseline_gate_summary_by_uncertainty']) == (
+        set(REQUIRED_UNCERTAINTY_CASES)
+    )
+    assert 'any_conditional_candidate' not in payload
+    assert 'combined_current_baseline_gate_summary' not in payload
     assert set(payload['results_by_uncertainty']) == set(REQUIRED_UNCERTAINTY_CASES)
 
 
@@ -542,3 +604,201 @@ def test_apply_uncertainty_changes_overlay_fields(config):
     assert overlaid.current_motor_center_radius_m == (
         config.current_motor_center_radius_m
     )
+
+
+def test_nominal_g1_placeholder_numeric_regression(nominal_rows):
+    row_12 = next(
+        row for row in nominal_rows
+        if row.scenario_name == 'g1_placeholder'
+        and abs(row.diameter_inch - 12.0) < 1.0e-9
+    )
+    row_15 = next(
+        row for row in nominal_rows
+        if row.scenario_name == 'g1_placeholder'
+        and abs(row.diameter_inch - 15.0) < 1.0e-9
+    )
+    assert row_12.total_mass_kg == pytest.approx(8.950461, abs=1.0e-5)
+    assert row_12.battery_mass_kg == pytest.approx(1.790461, abs=1.0e-5)
+    assert row_12.electrical_hover_power_w == pytest.approx(1546.96, abs=0.05)
+    assert row_12.battery_bus_current_a == pytest.approx(69.68, abs=0.02)
+    assert row_15.total_mass_kg == pytest.approx(8.489103, abs=1.0e-5)
+    assert row_15.battery_mass_kg == pytest.approx(1.329103, abs=1.0e-5)
+
+
+def test_uncertainty_energy_mass_closure_status_matrix(config):
+    by_case = solve_all_uncertainty_cases(config)
+    for case_name, expected_rows in _FROZEN_ENERGY_MASS_CLOSURE_STATUS.items():
+        rows = by_case[case_name]
+        assert len(rows) == 9
+        actual = {
+            (row.scenario_name, float(row.diameter_inch)):
+            row.energy_mass_closure_status
+            for row in rows
+        }
+        assert actual == expected_rows
+
+
+def test_reports_do_not_use_max_thrust_field_names(config, nominal_rows, tmp_path):
+    by_case = solve_all_uncertainty_cases(config)
+    paths = write_reports(
+        config,
+        nominal_rows,
+        tmp_path,
+        results_by_uncertainty=by_case,
+    )
+    json_text = paths['json'].read_text(encoding='utf-8')
+    csv_header = paths['csv'].read_text(encoding='utf-8').splitlines()[0]
+    md_text = paths['markdown'].read_text(encoding='utf-8')
+    payload = json.loads(json_text)
+    forbidden = (
+        'max_thrust_per_motor_n',
+        'max_thrust_per_motor_kgf',
+        'n1_max_thrust_per_remaining_motor_n',
+        'n1_max_thrust_per_remaining_motor_kgf',
+    )
+    for name in forbidden:
+        assert name not in json_text
+        assert name not in csv_header
+    required = (
+        'required_thrust_per_motor_at_target_tw_n',
+        'required_thrust_per_motor_at_target_tw_kgf',
+        'n1_required_thrust_per_remaining_motor_at_target_tw_n',
+        'n1_required_thrust_per_remaining_motor_at_target_tw_kgf',
+    )
+    for name in required:
+        assert name in json_text
+        assert name in csv_header
+    assert 'T_req@T/W' in md_text
+    assert 'T_n1_req at T/W' in md_text
+    row = payload['results'][0]
+    for name in forbidden:
+        assert name not in row
+
+
+def test_cli_reports_analysis_error_without_traceback(tmp_path, capsys):
+    config_path = _write_mutated_config(
+        tmp_path,
+        lambda raw: raw['solver'].update(
+            {'max_iterations': 1, 'mass_tolerance_kg': 1.0e-12}
+        ),
+    )
+    output_dir = tmp_path / 'cli_fail_out'
+    rc = main(['--config', str(config_path), '--output-dir', str(output_dir)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert captured.err.startswith('ERROR:')
+    assert 'Traceback' not in captured.err
+    assert 'Traceback' not in captured.out
+    assert 'File "' not in captured.err
+    assert not (output_dir / JSON_NAME).exists()
+    assert not (output_dir / CSV_NAME).exists()
+    assert not (output_dir / MARKDOWN_NAME).exists()
+
+
+def test_yaml_rejects_bool_for_numeric_fields(tmp_path):
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['propulsion'].__setitem__('figure_of_merit', True)
+    )
+    with pytest.raises(InvalidInputError, match='propulsion.figure_of_merit'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path,
+        lambda raw: raw['constants'].__setitem__('rotor_count', True),
+    )
+    with pytest.raises(InvalidInputError, match='constants.rotor_count'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path,
+        lambda raw: raw['solver'].__setitem__('max_iterations', True),
+    )
+    with pytest.raises(InvalidInputError, match='solver.max_iterations'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path,
+        lambda raw: raw['battery'].__setitem__('usable_fraction', False),
+    )
+    with pytest.raises(InvalidInputError, match='battery.usable_fraction'):
+        load_analysis_config(path)
+
+
+def test_yaml_rejects_truncated_non_integers(tmp_path):
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['constants'].__setitem__('rotor_count', 6.5)
+    )
+    with pytest.raises(InvalidInputError, match='constants.rotor_count'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['solver'].__setitem__('max_iterations', 1.5)
+    )
+    with pytest.raises(InvalidInputError, match='solver.max_iterations'):
+        load_analysis_config(path)
+
+
+def test_yaml_accepts_integer_valued_floats(tmp_path):
+    path = _write_mutated_config(
+        tmp_path,
+        lambda raw: (
+            raw['constants'].__setitem__('rotor_count', 6.0),
+            raw['solver'].__setitem__('max_iterations', 50.0),
+        ),
+    )
+    config = load_analysis_config(path)
+    assert config.rotor_count == 6
+    assert config.max_iterations == 50
+
+
+def test_yaml_rejects_duplicate_scenario_names_and_diameters(tmp_path):
+    def duplicate_scenario(raw):
+        raw['mass_scenarios'].append(dict(raw['mass_scenarios'][0]))
+
+    path = _write_mutated_config(tmp_path, duplicate_scenario)
+    with pytest.raises(InvalidInputError, match='duplicate mass scenario name'):
+        load_analysis_config(path)
+
+    def duplicate_diameter(raw):
+        raw['propellers_inch'].append(12.0)
+
+    path = _write_mutated_config(tmp_path, duplicate_diameter)
+    with pytest.raises(InvalidInputError, match='duplicate propeller diameter'):
+        load_analysis_config(path)
+
+
+def test_yaml_rejects_non_mapping_nested_nodes(tmp_path):
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw.__setitem__('constants', [1, 2, 3])
+    )
+    with pytest.raises(InvalidInputError, match='constants must be a mapping'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['mass_scenarios'].__setitem__(0, ['not', 'a', 'map'])
+    )
+    with pytest.raises(InvalidInputError, match='mass_scenarios\\[0\\] must be a mapping'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw.__setitem__('mass_scenarios', {'name': 'x'})
+    )
+    with pytest.raises(InvalidInputError, match='mass_scenarios must be a list'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path,
+        lambda raw: raw['uncertainty_cases'].__setitem__('nominal', 'not-a-map'),
+    )
+    with pytest.raises(
+        InvalidInputError, match='uncertainty_cases.nominal must be a mapping'
+    ):
+        load_analysis_config(path)
+
+
+def test_yaml_missing_keys_become_invalid_input_with_path(tmp_path):
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['constants'].pop('gravity_m_s2')
+    )
+    with pytest.raises(InvalidInputError, match='constants.gravity_m_s2'):
+        load_analysis_config(path)
+    path = _write_mutated_config(
+        tmp_path, lambda raw: raw['mass_scenarios'][0].pop('non_battery_mass_kg')
+    )
+    with pytest.raises(
+        InvalidInputError, match='mass_scenarios\\[0\\].non_battery_mass_kg'
+    ):
+        load_analysis_config(path)

@@ -46,13 +46,13 @@ from arachne_hx6_analysis.model import (
     hover_thrust_n,
     hover_thrust_per_motor_n,
     inches_to_metres,
-    max_thrust_per_motor_n,
     maximum_non_battery_mass_for_closure_kg,
     min_motor_center_radius_m,
     n1_burden_increase_fraction,
     n1_hover_thrust_per_remaining_motor_n,
-    n1_max_thrust_per_remaining_motor_n,
+    n1_required_thrust_per_remaining_motor_at_target_tw_n,
     newtons_to_kgf,
+    required_thrust_per_motor_at_target_tw_n,
     required_battery_mass_kg,
     rotor_disk_area_m2,
     rotor_envelope_diameter_m,
@@ -83,8 +83,8 @@ class PropulsionResult:
     hover_thrust_kgf: float | None
     hover_thrust_per_motor_n: float | None
     hover_thrust_per_motor_kgf: float | None
-    max_thrust_per_motor_n: float | None
-    max_thrust_per_motor_kgf: float | None
+    required_thrust_per_motor_at_target_tw_n: float | None
+    required_thrust_per_motor_at_target_tw_kgf: float | None
     disk_loading_n_m2: float | None
     disk_loading_kg_m2: float | None
     ideal_induced_power_w: float | None
@@ -114,8 +114,8 @@ class PropulsionResult:
     n1_hover_thrust_per_remaining_motor_n: float | None
     n1_hover_thrust_per_remaining_motor_kgf: float | None
     n1_burden_increase_fraction: float
-    n1_max_thrust_per_remaining_motor_n: float | None
-    n1_max_thrust_per_remaining_motor_kgf: float | None
+    n1_required_thrust_per_remaining_motor_at_target_tw_n: float | None
+    n1_required_thrust_per_remaining_motor_at_target_tw_kgf: float | None
     n1_interpretation: str
     fixed_point_crosscheck_converged: bool | None
     fixed_point_crosscheck_total_mass_kg: float | None
@@ -145,99 +145,272 @@ def load_analysis_config(path: str | Path) -> AnalysisConfig:
     config_path = Path(path)
     if not config_path.is_file():
         raise InvalidInputError(f'config file not found: {config_path}')
-    raw = yaml.safe_load(config_path.read_text(encoding='utf-8'))
-    if not isinstance(raw, dict):
-        raise InvalidInputError('config root must be a mapping')
     try:
-        constants = raw['constants']
-        propulsion = raw['propulsion']
-        battery = raw['battery']
-        solver = raw['solver']
-        geometry = raw['geometry']
-        risk_flags = raw['risk_flags']
-        scenarios_raw = raw['mass_scenarios']
-        propellers = raw['propellers_inch']
-        uncertainty_raw = raw['uncertainty_cases']
+        raw = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+    except yaml.YAMLError as exc:
+        raise InvalidInputError(f'invalid YAML in {config_path}: {exc}') from exc
+    try:
+        config = _parse_analysis_config(raw)
+    except InvalidInputError:
+        raise
     except KeyError as exc:
         raise InvalidInputError(f'config missing key: {exc}') from exc
-    if not isinstance(scenarios_raw, list):
-        raise InvalidInputError('mass_scenarios must be a list')
-    if not isinstance(uncertainty_raw, dict):
-        raise InvalidInputError('uncertainty_cases must be a mapping')
-    scenarios = tuple(
-        MassScenario(
-            name=str(item['name']),
-            non_battery_mass_kg=float(item['non_battery_mass_kg']),
-            description=str(item.get('description', '')).strip(),
-        )
-        for item in scenarios_raw
-    )
-    uncertainty_cases = _parse_uncertainty_cases(uncertainty_raw)
-    config = AnalysisConfig(
-        status=str(raw.get('status', '')),
-        procurement_allowed=bool(raw.get('procurement_allowed')),
-        notes=str(raw.get('notes', '')).strip(),
-        gravity_m_s2=float(constants['gravity_m_s2']),
-        air_density_kg_m3=float(constants['air_density_kg_m3']),
-        rotor_count=int(constants['rotor_count']),
-        thrust_to_weight_target=float(propulsion['thrust_to_weight_target']),
-        figure_of_merit=float(propulsion['figure_of_merit']),
-        motor_esc_efficiency=float(propulsion['motor_esc_efficiency']),
-        bus_voltage_v=float(propulsion['bus_voltage_v']),
-        avionics_power_w=float(propulsion['avionics_power_w']),
-        usable_fraction=float(battery['usable_fraction']),
-        pack_specific_energy_wh_kg=float(battery['pack_specific_energy_wh_kg']),
-        endurance_s=float(battery['endurance_s']),
-        mass_tolerance_kg=float(solver['mass_tolerance_kg']),
-        max_iterations=int(solver['max_iterations']),
-        current_motor_center_radius_m=float(
-            geometry['current_motor_center_radius_m']
-        ),
-        min_tip_clearance_m=float(geometry['min_tip_clearance_m']),
-        battery_mass_fraction_warn=float(
-            risk_flags['battery_mass_fraction_warn']
-        ),
-        disk_loading_n_m2_warn=float(risk_flags['disk_loading_n_m2_warn']),
-        propellers_inch=tuple(float(value) for value in propellers),
-        mass_scenarios=scenarios,
-        uncertainty_cases=uncertainty_cases,
-        raw=raw,
-    )
+    except (TypeError, ValueError) as exc:
+        raise InvalidInputError(f'invalid config value: {exc}') from exc
     config.validate()
     return config
+
+
+def _parse_analysis_config(raw: Any) -> AnalysisConfig:
+    root = _as_mapping(raw, 'config root')
+    constants = _as_mapping(_require_key(root, 'constants'), 'constants')
+    propulsion = _as_mapping(_require_key(root, 'propulsion'), 'propulsion')
+    battery = _as_mapping(_require_key(root, 'battery'), 'battery')
+    solver = _as_mapping(_require_key(root, 'solver'), 'solver')
+    geometry = _as_mapping(_require_key(root, 'geometry'), 'geometry')
+    risk_flags = _as_mapping(_require_key(root, 'risk_flags'), 'risk_flags')
+    scenarios_raw = _as_list(
+        _require_key(root, 'mass_scenarios'), 'mass_scenarios'
+    )
+    propellers_raw = _as_list(
+        _require_key(root, 'propellers_inch'), 'propellers_inch'
+    )
+    uncertainty_raw = _as_mapping(
+        _require_key(root, 'uncertainty_cases'), 'uncertainty_cases'
+    )
+    return AnalysisConfig(
+        status=_as_str(_require_key(root, 'status'), 'status'),
+        procurement_allowed=_as_bool(
+            _require_key(root, 'procurement_allowed'), 'procurement_allowed'
+        ),
+        notes=_optional_str(root.get('notes', ''), 'notes'),
+        gravity_m_s2=_as_float(
+            _require_key(constants, 'gravity_m_s2', 'constants'),
+            'constants.gravity_m_s2',
+        ),
+        air_density_kg_m3=_as_float(
+            _require_key(constants, 'air_density_kg_m3', 'constants'),
+            'constants.air_density_kg_m3',
+        ),
+        rotor_count=_as_int(
+            _require_key(constants, 'rotor_count', 'constants'),
+            'constants.rotor_count',
+        ),
+        thrust_to_weight_target=_as_float(
+            _require_key(propulsion, 'thrust_to_weight_target', 'propulsion'),
+            'propulsion.thrust_to_weight_target',
+        ),
+        figure_of_merit=_as_float(
+            _require_key(propulsion, 'figure_of_merit', 'propulsion'),
+            'propulsion.figure_of_merit',
+        ),
+        motor_esc_efficiency=_as_float(
+            _require_key(propulsion, 'motor_esc_efficiency', 'propulsion'),
+            'propulsion.motor_esc_efficiency',
+        ),
+        bus_voltage_v=_as_float(
+            _require_key(propulsion, 'bus_voltage_v', 'propulsion'),
+            'propulsion.bus_voltage_v',
+        ),
+        avionics_power_w=_as_float(
+            _require_key(propulsion, 'avionics_power_w', 'propulsion'),
+            'propulsion.avionics_power_w',
+        ),
+        usable_fraction=_as_float(
+            _require_key(battery, 'usable_fraction', 'battery'),
+            'battery.usable_fraction',
+        ),
+        pack_specific_energy_wh_kg=_as_float(
+            _require_key(battery, 'pack_specific_energy_wh_kg', 'battery'),
+            'battery.pack_specific_energy_wh_kg',
+        ),
+        endurance_s=_as_float(
+            _require_key(battery, 'endurance_s', 'battery'),
+            'battery.endurance_s',
+        ),
+        mass_tolerance_kg=_as_float(
+            _require_key(solver, 'mass_tolerance_kg', 'solver'),
+            'solver.mass_tolerance_kg',
+        ),
+        max_iterations=_as_int(
+            _require_key(solver, 'max_iterations', 'solver'),
+            'solver.max_iterations',
+        ),
+        current_motor_center_radius_m=_as_float(
+            _require_key(
+                geometry, 'current_motor_center_radius_m', 'geometry'
+            ),
+            'geometry.current_motor_center_radius_m',
+        ),
+        min_tip_clearance_m=_as_float(
+            _require_key(geometry, 'min_tip_clearance_m', 'geometry'),
+            'geometry.min_tip_clearance_m',
+        ),
+        battery_mass_fraction_warn=_as_float(
+            _require_key(
+                risk_flags, 'battery_mass_fraction_warn', 'risk_flags'
+            ),
+            'risk_flags.battery_mass_fraction_warn',
+        ),
+        disk_loading_n_m2_warn=_as_float(
+            _require_key(risk_flags, 'disk_loading_n_m2_warn', 'risk_flags'),
+            'risk_flags.disk_loading_n_m2_warn',
+        ),
+        propellers_inch=_parse_propellers_inch(propellers_raw),
+        mass_scenarios=_parse_mass_scenarios(scenarios_raw),
+        uncertainty_cases=_parse_uncertainty_cases(uncertainty_raw),
+        raw=root,
+    )
+
+
+def _require_key(mapping: Mapping[str, Any], key: str, path: str = '') -> Any:
+    try:
+        return mapping[key]
+    except KeyError as exc:
+        prefix = f'{path}.' if path else ''
+        raise InvalidInputError(f'{prefix}{key} is required') from exc
+
+
+def _as_mapping(value: Any, path: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise InvalidInputError(
+            f'{path} must be a mapping, got {type(value).__name__}'
+        )
+    return value
+
+
+def _as_list(value: Any, path: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise InvalidInputError(
+            f'{path} must be a list, got {type(value).__name__}'
+        )
+    return value
+
+
+def _as_bool(value: Any, path: str) -> bool:
+    if not isinstance(value, bool):
+        raise InvalidInputError(f'{path} must be a boolean, got {value!r}')
+    return value
+
+
+def _as_str(value: Any, path: str) -> str:
+    if not isinstance(value, str):
+        raise InvalidInputError(f'{path} must be a string, got {value!r}')
+    return value
+
+
+def _optional_str(value: Any, path: str) -> str:
+    if value is None:
+        return ''
+    return _as_str(value, path).strip()
+
+
+def _as_float(value: Any, path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise InvalidInputError(f'{path} must be a real number, got {value!r}')
+    number = float(value)
+    if not math.isfinite(number):
+        raise InvalidInputError(f'{path} must be finite, got {value!r}')
+    return number
+
+
+def _as_int(value: Any, path: str) -> int:
+    if isinstance(value, bool):
+        raise InvalidInputError(f'{path} must be an integer, got {value!r}')
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value) or value != int(value):
+            raise InvalidInputError(
+                f'{path} must be an integer without truncation, got {value!r}'
+            )
+        return int(value)
+    raise InvalidInputError(f'{path} must be an integer, got {value!r}')
+
+
+def _parse_propellers_inch(raw_values: list[Any]) -> tuple[float, ...]:
+    diameters: list[float] = []
+    seen: set[float] = set()
+    for index, value in enumerate(raw_values):
+        diameter = _as_float(value, f'propellers_inch[{index}]')
+        if diameter in seen:
+            raise InvalidInputError(
+                f'duplicate propeller diameter: {diameter}'
+            )
+        seen.add(diameter)
+        diameters.append(diameter)
+    return tuple(diameters)
+
+
+def _parse_mass_scenarios(raw_items: list[Any]) -> tuple[MassScenario, ...]:
+    scenarios: list[MassScenario] = []
+    seen_names: set[str] = set()
+    for index, item in enumerate(raw_items):
+        path = f'mass_scenarios[{index}]'
+        mapping = _as_mapping(item, path)
+        name = _as_str(_require_key(mapping, 'name', path), f'{path}.name').strip()
+        if not name:
+            raise InvalidInputError(f'{path}.name must be non-empty')
+        if name in seen_names:
+            raise InvalidInputError(f'duplicate mass scenario name: {name!r}')
+        seen_names.add(name)
+        description = _optional_str(
+            mapping.get('description', ''), f'{path}.description'
+        )
+        scenarios.append(
+            MassScenario(
+                name=name,
+                non_battery_mass_kg=_as_float(
+                    _require_key(mapping, 'non_battery_mass_kg', path),
+                    f'{path}.non_battery_mass_kg',
+                ),
+                description=description,
+            )
+        )
+    return tuple(scenarios)
 
 
 def _parse_uncertainty_cases(raw_cases: Mapping[str, Any]) -> tuple[UncertaintyCase, ...]:
     cases: list[UncertaintyCase] = []
     for name in REQUIRED_UNCERTAINTY_CASES:
+        path = f'uncertainty_cases.{name}'
         if name not in raw_cases:
             raise InvalidInputError(
                 f'uncertainty_cases missing required case {name!r}'
             )
-        item = raw_cases[name]
-        if not isinstance(item, dict):
-            raise InvalidInputError(
-                f'uncertainty_cases.{name} must be a mapping'
-            )
+        item = _as_mapping(raw_cases[name], path)
         try:
             cases.append(
                 UncertaintyCase(
                     name=name,
-                    air_density_kg_m3=float(item['air_density_kg_m3']),
-                    figure_of_merit=float(item['figure_of_merit']),
-                    motor_esc_efficiency=float(item['motor_esc_efficiency']),
-                    pack_specific_energy_wh_kg=float(
-                        item['pack_specific_energy_wh_kg']
+                    air_density_kg_m3=_as_float(
+                        item['air_density_kg_m3'],
+                        f'{path}.air_density_kg_m3',
                     ),
-                    usable_fraction=float(item['usable_fraction']),
-                    avionics_power_w=float(item['avionics_power_w']),
-                    description=str(item.get('description', '')).strip(),
+                    figure_of_merit=_as_float(
+                        item['figure_of_merit'], f'{path}.figure_of_merit'
+                    ),
+                    motor_esc_efficiency=_as_float(
+                        item['motor_esc_efficiency'],
+                        f'{path}.motor_esc_efficiency',
+                    ),
+                    pack_specific_energy_wh_kg=_as_float(
+                        item['pack_specific_energy_wh_kg'],
+                        f'{path}.pack_specific_energy_wh_kg',
+                    ),
+                    usable_fraction=_as_float(
+                        item['usable_fraction'], f'{path}.usable_fraction'
+                    ),
+                    avionics_power_w=_as_float(
+                        item['avionics_power_w'], f'{path}.avionics_power_w'
+                    ),
+                    description=_optional_str(
+                        item.get('description', ''), f'{path}.description'
+                    ),
                 )
             )
         except KeyError as exc:
-            raise InvalidInputError(
-                f'uncertainty_cases.{name} missing key: {exc}'
-            ) from exc
+            raise InvalidInputError(f'{path} missing key: {exc}') from exc
     return tuple(cases)
 
 
@@ -273,7 +446,7 @@ def evaluate_hover_at_mass(
     thrust_motor = hover_thrust_per_motor_n(
         total_mass_kg, config.gravity_m_s2, config.rotor_count
     )
-    thrust_max = max_thrust_per_motor_n(
+    thrust_req = required_thrust_per_motor_at_target_tw_n(
         total_mass_kg,
         config.gravity_m_s2,
         config.rotor_count,
@@ -298,9 +471,9 @@ def evaluate_hover_at_mass(
         'hover_thrust_per_motor_kgf': newtons_to_kgf(
             thrust_motor, config.gravity_m_s2
         ),
-        'max_thrust_per_motor_n': thrust_max,
-        'max_thrust_per_motor_kgf': newtons_to_kgf(
-            thrust_max, config.gravity_m_s2
+        'required_thrust_per_motor_at_target_tw_n': thrust_req,
+        'required_thrust_per_motor_at_target_tw_kgf': newtons_to_kgf(
+            thrust_req, config.gravity_m_s2
         ),
         'disk_loading_n_m2': disk_loading_n_m2(thrust, area_total),
         'disk_loading_kg_m2': disk_loading_kg_m2(total_mass_kg, area_total),
@@ -637,8 +810,8 @@ def _build_result(
         hover_thrust_kgf = None
         hover_thrust_motor = None
         hover_thrust_motor_kgf = None
-        max_thrust_motor = None
-        max_thrust_motor_kgf = None
+        required_thrust_motor = None
+        required_thrust_motor_kgf = None
         disk_n = None
         disk_kg = None
         ideal_power = None
@@ -647,15 +820,19 @@ def _build_result(
         bus_current = None
         n1_hover = None
         n1_hover_kgf = None
-        n1_max = None
-        n1_max_kgf = None
+        n1_required = None
+        n1_required_kgf = None
     else:
         hover_thrust = hover_closed['hover_thrust_n']
         hover_thrust_kgf = hover_closed['hover_thrust_kgf']
         hover_thrust_motor = hover_closed['hover_thrust_per_motor_n']
         hover_thrust_motor_kgf = hover_closed['hover_thrust_per_motor_kgf']
-        max_thrust_motor = hover_closed['max_thrust_per_motor_n']
-        max_thrust_motor_kgf = hover_closed['max_thrust_per_motor_kgf']
+        required_thrust_motor = hover_closed[
+            'required_thrust_per_motor_at_target_tw_n'
+        ]
+        required_thrust_motor_kgf = hover_closed[
+            'required_thrust_per_motor_at_target_tw_kgf'
+        ]
         disk_n = hover_closed['disk_loading_n_m2']
         disk_kg = hover_closed['disk_loading_kg_m2']
         ideal_power = hover_closed['ideal_induced_power_w']
@@ -666,13 +843,13 @@ def _build_result(
             hover_thrust, config.rotor_count
         )
         n1_hover_kgf = newtons_to_kgf(n1_hover, config.gravity_m_s2)
-        n1_max = n1_max_thrust_per_remaining_motor_n(
+        n1_required = n1_required_thrust_per_remaining_motor_at_target_tw_n(
             total_mass_kg,
             config.gravity_m_s2,
             config.rotor_count,
             config.thrust_to_weight_target,
         )
-        n1_max_kgf = newtons_to_kgf(n1_max, config.gravity_m_s2)
+        n1_required_kgf = newtons_to_kgf(n1_required, config.gravity_m_s2)
     flags: list[str] = [
         STATUS_ANALYSIS_ONLY,
         STATUS_NOT_FOR_PROCUREMENT,
@@ -711,8 +888,8 @@ def _build_result(
         hover_thrust_kgf=hover_thrust_kgf,
         hover_thrust_per_motor_n=hover_thrust_motor,
         hover_thrust_per_motor_kgf=hover_thrust_motor_kgf,
-        max_thrust_per_motor_n=max_thrust_motor,
-        max_thrust_per_motor_kgf=max_thrust_motor_kgf,
+        required_thrust_per_motor_at_target_tw_n=required_thrust_motor,
+        required_thrust_per_motor_at_target_tw_kgf=required_thrust_motor_kgf,
         disk_loading_n_m2=disk_n,
         disk_loading_kg_m2=disk_kg,
         ideal_induced_power_w=ideal_power,
@@ -750,8 +927,8 @@ def _build_result(
         n1_hover_thrust_per_remaining_motor_n=n1_hover,
         n1_hover_thrust_per_remaining_motor_kgf=n1_hover_kgf,
         n1_burden_increase_fraction=n1_burden,
-        n1_max_thrust_per_remaining_motor_n=n1_max,
-        n1_max_thrust_per_remaining_motor_kgf=n1_max_kgf,
+        n1_required_thrust_per_remaining_motor_at_target_tw_n=n1_required,
+        n1_required_thrust_per_remaining_motor_at_target_tw_kgf=n1_required_kgf,
         n1_interpretation=N1_STATIC_FLAG,
         fixed_point_crosscheck_converged=fixed_point_crosscheck_converged,
         fixed_point_crosscheck_total_mass_kg=fixed_point_crosscheck_total_mass_kg,

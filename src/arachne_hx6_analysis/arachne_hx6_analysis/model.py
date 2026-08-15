@@ -89,13 +89,17 @@ def hover_thrust_per_motor_n(
     return hover_thrust_n(total_mass_kg, gravity_m_s2) / float(rotor_count)
 
 
-def max_thrust_per_motor_n(
+def required_thrust_per_motor_at_target_tw_n(
     total_mass_kg: float,
     gravity_m_s2: float,
     rotor_count: int,
     thrust_to_weight_target: float,
 ) -> float:
-    """Per-motor thrust at a planning thrust-to-weight target."""
+    """Per-motor thrust demand at a planning thrust-to-weight target.
+
+    This is a required thrust at the chosen T/W, not a measured motor
+    capability or a procurement rating.
+    """
     _require_positive(thrust_to_weight_target, 'thrust_to_weight_target')
     _require_rotor_count(rotor_count)
     return (
@@ -303,13 +307,17 @@ def n1_hover_thrust_per_remaining_motor_n(
     return total_hover_thrust_n / float(remaining)
 
 
-def n1_max_thrust_per_remaining_motor_n(
+def n1_required_thrust_per_remaining_motor_at_target_tw_n(
     total_mass_kg: float,
     gravity_m_s2: float,
     rotor_count: int,
     thrust_to_weight_target: float,
 ) -> float:
-    """Per-remaining-motor thrust at the planning thrust-to-weight target."""
+    """Per-remaining-motor thrust demand at the planning T/W target.
+
+    This is a required thrust at the chosen T/W after one static outage,
+    not a measured remaining-motor capability.
+    """
     _require_positive(thrust_to_weight_target, 'thrust_to_weight_target')
     remaining = n1_remaining_rotor_count(rotor_count)
     return (
@@ -477,9 +485,13 @@ class AnalysisConfig:
         )
         _require_positive(self.endurance_s, 'endurance_s')
         _require_positive(self.mass_tolerance_kg, 'mass_tolerance_kg')
-        if not isinstance(self.max_iterations, int) or self.max_iterations < 1:
+        if (
+            not isinstance(self.max_iterations, int)
+            or isinstance(self.max_iterations, bool)
+            or self.max_iterations < 1
+        ):
             raise InvalidInputError(
-                f'max_iterations must be an integer >= 1, got {self.max_iterations}'
+                f'max_iterations must be an integer >= 1, got {self.max_iterations!r}'
             )
         _require_positive(
             self.current_motor_center_radius_m, 'current_motor_center_radius_m'
@@ -491,13 +503,25 @@ class AnalysisConfig:
         _require_positive(self.disk_loading_n_m2_warn, 'disk_loading_n_m2_warn')
         if not self.propellers_inch:
             raise InvalidInputError('propellers_inch must not be empty')
+        seen_diameters: set[float] = set()
         for diameter_inch in self.propellers_inch:
             _require_positive(diameter_inch, 'propellers_inch item')
+            if diameter_inch in seen_diameters:
+                raise InvalidInputError(
+                    f'duplicate propeller diameter: {diameter_inch}'
+                )
+            seen_diameters.add(diameter_inch)
         if not self.mass_scenarios:
             raise InvalidInputError('mass_scenarios must not be empty')
+        seen_scenario_names: set[str] = set()
         for scenario in self.mass_scenarios:
             if not scenario.name:
                 raise InvalidInputError('mass scenario name must be non-empty')
+            if scenario.name in seen_scenario_names:
+                raise InvalidInputError(
+                    f'duplicate mass scenario name: {scenario.name!r}'
+                )
+            seen_scenario_names.add(scenario.name)
             _require_positive(
                 scenario.non_battery_mass_kg,
                 f'{scenario.name}.non_battery_mass_kg',

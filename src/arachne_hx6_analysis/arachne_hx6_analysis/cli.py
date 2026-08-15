@@ -7,8 +7,8 @@ from pathlib import Path
 import sys
 
 from arachne_hx6_analysis.model import (
+    AnalysisError,
     GATE_CONDITIONAL_CANDIDATE,
-    InvalidInputError,
     STATUS_OVERALL_UNDETERMINED,
 )
 from arachne_hx6_analysis.report import write_reports
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output_dir,
             results_by_uncertainty=by_case,
         )
-    except (InvalidInputError, OSError) as exc:
+    except (AnalysisError, OSError) as exc:
         print(f'ERROR: {exc}', file=sys.stderr)
         return 1
     print('ANALYSIS_ONLY')

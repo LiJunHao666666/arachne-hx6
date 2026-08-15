@@ -12,6 +12,7 @@ from arachne_hx6_analysis.model import (
     GATE_CONDITIONAL_CANDIDATE,
     MISSING_CLOSED_VEHICLE_MASS_ITEMS,
     N1_STATIC_FLAG,
+    REQUIRED_UNCERTAINTY_CASES,
     STATUS_ANALYSIS_ONLY,
     STATUS_NOT_FOR_PROCUREMENT,
     STATUS_OVERALL_UNDETERMINED,
@@ -31,7 +32,11 @@ EQUATIONS = (
     ('hover_thrust', 'T = m * g', 'N'),
     ('hover_thrust_kgf', 'T_kgf = T / g', 'kgf'),
     ('hover_thrust_per_motor', 'T_motor = T / n', 'N and kgf'),
-    ('max_thrust_per_motor', 'T_max = (T/W) * m * g / n', 'N and kgf'),
+    (
+        'required_thrust_per_motor_at_target_tw',
+        'T_req = (T/W) * m * g / n  (planning demand, not motor capability)',
+        'N and kgf',
+    ),
     ('disk_loading_si', 'DL = T / A_total', 'N/m^2'),
     ('disk_loading_kg', 'DL_kg = m / A_total', 'kg/m^2'),
     (
@@ -89,6 +94,11 @@ EQUATIONS = (
     (
         'n1_hover_thrust_per_remaining_motor',
         'T_n1 = T / (n - 1); burden_increase = n/(n-1) - 1',
+        'N and kgf',
+    ),
+    (
+        'n1_required_thrust_per_remaining_motor_at_target_tw',
+        'T_n1_req = (T/W) * m * g / (n-1)  (planning demand, not motor capability)',
         'N and kgf',
     ),
 )
@@ -175,11 +185,16 @@ def build_json_payload(
             for name, rows in by_case.items()
         },
         'result_ranges': _result_ranges(by_case),
-        'combined_current_baseline_gate_summary': _gate_summary(results),
-        'any_conditional_candidate': any(
-            row.combined_current_baseline_gate == GATE_CONDITIONAL_CANDIDATE
-            for row in results
-        ),
+        'combined_current_baseline_gate_summary_nominal': _gate_summary(results),
+        'any_conditional_candidate_nominal': _any_conditional_candidate(results),
+        'any_conditional_candidate_by_uncertainty': {
+            name: _any_conditional_candidate(by_case.get(name, ()))
+            for name in REQUIRED_UNCERTAINTY_CASES
+        },
+        'combined_current_baseline_gate_summary_by_uncertainty': {
+            name: _gate_summary(by_case.get(name, ()))
+            for name in REQUIRED_UNCERTAINTY_CASES
+        },
     }
 
 
@@ -319,22 +334,24 @@ def render_markdown(
         'voltage. It is not motor phase current.',
         '',
         '| scenario | D (in) | T (N) | T (kgf) | T_motor (N) | T_motor (kgf) | '
-        'T_max (N) | T_max (kgf) | DL (N/m^2) | P_ideal (W) | '
+        'T_req@T/W (N) | T_req@T/W (kgf) | DL (N/m^2) | P_ideal (W) | '
         'P_ideal_motor (W) | P_elec (W) | I_bus (A) |',
         '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|',
     ])
     for row in results:
         lines.append(
-            '| {name} | {din:.2f} | {T} | {Tkgf} | {Tm} | {Tmkgf} | {Tmax} | '
-            '{Tmaxkgf} | {dln} | {Pi} | {Pim} | {Pe} | {I} |'.format(
+            '| {name} | {din:.2f} | {T} | {Tkgf} | {Tm} | {Tmkgf} | {Treq} | '
+            '{Treqkgf} | {dln} | {Pi} | {Pim} | {Pe} | {I} |'.format(
                 name=row.scenario_name,
                 din=row.diameter_inch,
                 T=_md_num(row.hover_thrust_n, '.2f'),
                 Tkgf=_md_num(row.hover_thrust_kgf, '.3f'),
                 Tm=_md_num(row.hover_thrust_per_motor_n, '.2f'),
                 Tmkgf=_md_num(row.hover_thrust_per_motor_kgf, '.3f'),
-                Tmax=_md_num(row.max_thrust_per_motor_n, '.2f'),
-                Tmaxkgf=_md_num(row.max_thrust_per_motor_kgf, '.3f'),
+                Treq=_md_num(row.required_thrust_per_motor_at_target_tw_n, '.2f'),
+                Treqkgf=_md_num(
+                    row.required_thrust_per_motor_at_target_tw_kgf, '.3f'
+                ),
                 dln=_md_num(row.disk_loading_n_m2, '.1f'),
                 Pi=_md_num(row.ideal_induced_power_w, '.1f'),
                 Pim=_md_num(row.ideal_induced_power_per_motor_w, '.1f'),
@@ -344,9 +361,11 @@ def render_markdown(
         )
     lines.extend([
         '',
-        '## Current-skeleton combined gate',
+        '## Nominal current-skeleton combined gate',
         '',
-        'Joint gate is `CONDITIONAL_CANDIDATE` only if the current 0.30 m radius '
+        'The following table and candidate flag are **nominal only**. They do '
+        'not represent conservative or optimistic planning bounds. Joint gate '
+        'is `CONDITIONAL_CANDIDATE` only if the current 0.30 m radius '
         'can host the disk and energy-mass closure exists. Otherwise '
         '`REJECTED_FOR_CURRENT_BASELINE`. This is not a procurement or final '
         'flight-feasibility conclusion.',
@@ -365,15 +384,28 @@ def render_markdown(
                 gate=row.combined_current_baseline_gate,
             )
         )
-    if any(
-        row.combined_current_baseline_gate == GATE_CONDITIONAL_CANDIDATE
-        for row in results
-    ):
+    if _any_conditional_candidate(results):
         lines.append('')
-        lines.append('- At least one row is a current-baseline conditional candidate.')
+        lines.append(
+            '- Nominal: at least one row is a current-baseline conditional '
+            'candidate.'
+        )
     else:
         lines.append('')
-        lines.append('- Current skeleton has no combined candidate.')
+        lines.append('- Nominal current skeleton has no combined candidate.')
+    lines.extend([
+        '',
+        '## Combined gate by uncertainty case',
+        '',
+        'Each case is computed independently. A nominal non-candidate must not '
+        'be read as a global result.',
+        '',
+        '| case | any_conditional_candidate |',
+        '|---|---|',
+    ])
+    for name in REQUIRED_UNCERTAINTY_CASES:
+        flag = _any_conditional_candidate(by_case.get(name, ()))
+        lines.append(f'| `{name}` | `{flag}` |')
     lines.extend([
         '',
         '## N-1 static thrust reference',
@@ -385,19 +417,21 @@ def render_markdown(
         'These static splits cannot prove safe fault-tolerant flight.',
         '',
         '| scenario | D (in) | T_motor (N) | T_n1 (N) | T_n1 (kgf) | '
-        'burden increase | T_n1_max at T/W (N) |',
+        'burden increase | T_n1_req at T/W (N) |',
         '|---|---:|---:|---:|---:|---:|---:|',
     ])
     for row in results:
         lines.append(
-            '| {name} | {din:.2f} | {Tm} | {Tn1} | {Tn1kgf} | {burden} | {Tmax} |'.format(
+            '| {name} | {din:.2f} | {Tm} | {Tn1} | {Tn1kgf} | {burden} | {Treq} |'.format(
                 name=row.scenario_name,
                 din=row.diameter_inch,
                 Tm=_md_num(row.hover_thrust_per_motor_n, '.2f'),
                 Tn1=_md_num(row.n1_hover_thrust_per_remaining_motor_n, '.2f'),
                 Tn1kgf=_md_num(row.n1_hover_thrust_per_remaining_motor_kgf, '.3f'),
                 burden=f'{row.n1_burden_increase_fraction:.2%}',
-                Tmax=_md_num(row.n1_max_thrust_per_remaining_motor_n, '.2f'),
+                Treq=_md_num(
+                    row.n1_required_thrust_per_remaining_motor_at_target_tw_n, '.2f'
+                ),
             )
         )
     lines.extend([
@@ -586,12 +620,16 @@ def _case_values(
     return values
 
 
+def _any_conditional_candidate(results: Sequence[PropulsionResult]) -> bool:
+    return any(
+        row.combined_current_baseline_gate == GATE_CONDITIONAL_CANDIDATE
+        for row in results
+    )
+
+
 def _gate_summary(results: Sequence[PropulsionResult]) -> dict[str, Any]:
     return {
-        'any_conditional_candidate': any(
-            row.combined_current_baseline_gate == GATE_CONDITIONAL_CANDIDATE
-            for row in results
-        ),
+        'any_conditional_candidate': _any_conditional_candidate(results),
         'rows': [
             {
                 'scenario_name': row.scenario_name,
@@ -677,8 +715,8 @@ def _write_csv(path: Path, results: Iterable[PropulsionResult]) -> None:
         'hover_thrust_kgf',
         'hover_thrust_per_motor_n',
         'hover_thrust_per_motor_kgf',
-        'max_thrust_per_motor_n',
-        'max_thrust_per_motor_kgf',
+        'required_thrust_per_motor_at_target_tw_n',
+        'required_thrust_per_motor_at_target_tw_kgf',
         'area_one_m2',
         'area_total_m2',
         'disk_loading_n_m2',
@@ -706,7 +744,8 @@ def _write_csv(path: Path, results: Iterable[PropulsionResult]) -> None:
         'n1_hover_thrust_per_remaining_motor_n',
         'n1_hover_thrust_per_remaining_motor_kgf',
         'n1_burden_increase_fraction',
-        'n1_max_thrust_per_remaining_motor_n',
+        'n1_required_thrust_per_remaining_motor_at_target_tw_n',
+        'n1_required_thrust_per_remaining_motor_at_target_tw_kgf',
         'n1_interpretation',
         'risk_flags',
     ]
@@ -732,8 +771,12 @@ def _write_csv(path: Path, results: Iterable[PropulsionResult]) -> None:
                 'hover_thrust_per_motor_kgf': _csv_cell(
                     row.hover_thrust_per_motor_kgf
                 ),
-                'max_thrust_per_motor_n': _csv_cell(row.max_thrust_per_motor_n),
-                'max_thrust_per_motor_kgf': _csv_cell(row.max_thrust_per_motor_kgf),
+                'required_thrust_per_motor_at_target_tw_n': _csv_cell(
+                    row.required_thrust_per_motor_at_target_tw_n
+                ),
+                'required_thrust_per_motor_at_target_tw_kgf': _csv_cell(
+                    row.required_thrust_per_motor_at_target_tw_kgf
+                ),
                 'area_one_m2': f'{row.area_one_m2:.8f}',
                 'area_total_m2': f'{row.area_total_m2:.8f}',
                 'disk_loading_n_m2': _csv_cell(row.disk_loading_n_m2),
@@ -777,8 +820,11 @@ def _write_csv(path: Path, results: Iterable[PropulsionResult]) -> None:
                 'n1_burden_increase_fraction': (
                     f'{row.n1_burden_increase_fraction:.6f}'
                 ),
-                'n1_max_thrust_per_remaining_motor_n': _csv_cell(
-                    row.n1_max_thrust_per_remaining_motor_n
+                'n1_required_thrust_per_remaining_motor_at_target_tw_n': _csv_cell(
+                    row.n1_required_thrust_per_remaining_motor_at_target_tw_n
+                ),
+                'n1_required_thrust_per_remaining_motor_at_target_tw_kgf': _csv_cell(
+                    row.n1_required_thrust_per_remaining_motor_at_target_tw_kgf
                 ),
                 'n1_interpretation': row.n1_interpretation,
                 'risk_flags': ','.join(row.risk_flags),

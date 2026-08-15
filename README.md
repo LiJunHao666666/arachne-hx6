@@ -10,7 +10,7 @@
 
 ## G1.5 推进可行性分析（ANALYSIS_ONLY）
 
-离线质量—桨盘—推力—功率—电池—几何计算见 `docs/G1_5_PROPULSION_FEASIBILITY.md` 与包 `arachne_hx6_analysis`。结果标记为 **ANALYSIS_ONLY / NOT_FOR_PROCUREMENT**。能量质量闭合只是条件电池反馈解，不是整机质量闭合或可飞结论；整机推进可行性保持 `UNDETERMINED`。本阶段不修改 G1 URDF。
+离线质量—桨盘—推力—功率—电池—几何计算见 `docs/G1_5_PROPULSION_FEASIBILITY.md` 与包 `arachne_hx6_analysis`。结果标记为 **ANALYSIS_ONLY / NOT_FOR_PROCUREMENT**。能量质量闭合只是条件电池反馈解，不是整机质量闭合或可飞结论；整机推进可行性保持 `UNDETERMINED`。JSON 顶层候选标志区分为标称（`*_nominal`）与分不确定性（`*_by_uncertainty`），不得把标称结果当成全局结论。本阶段不修改 G1 URDF。
 
 ```bash
 source /opt/ros/jazzy/setup.bash

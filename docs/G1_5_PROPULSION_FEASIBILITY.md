@@ -42,7 +42,7 @@ ros2 run arachne_hx6_analysis propulsion_report \
 | 悬停总推力 | \(T = m g\) | N |
 | 悬停总推力 | \(T_{\mathrm{kgf}} = T / g\) | kgf |
 | 单电机悬停推力 | \(T_{\mathrm{motor}} = T / n\) | N 与 kgf |
-| 目标推重比最大推力 | \(T_{\max} = (T/W)\, m g / n\) | N 与 kgf |
+| 目标推重比所需推力 | \(T_{\mathrm{req}} = (T/W)\, m g / n\)（规划需求，不是电机能力） | N 与 kgf |
 | 桨盘载荷 | \(\mathrm{DL} = T / A_{\mathrm{total}}\) | N/m² |
 | 桨盘载荷 | \(\mathrm{DL}_{kg} = m / A_{\mathrm{total}}\) | kg/m² |
 | 理想诱导功率（单桨） | \(P_{\mathrm{ideal}} = T_{\mathrm{motor}}^{3/2} / \sqrt{2\rho A}\) | W |
@@ -57,12 +57,15 @@ ros2 run arachne_hx6_analysis propulsion_report \
 | 最低电机中心半径 | \(R_{\min} = (D + \delta) / (2\sin(\pi / n))\) | m |
 | 旋翼外接直径 | \(D_{\mathrm{env}} = 2R + D\) | m |
 | N-1 静态剩余推力 | \(T_{N-1} = T / (n-1)\)；负担增量 \(n/(n-1)-1\) | N 与 kgf |
+| N-1 目标推重比所需推力 | \(T_{N-1,\mathrm{req}} = (T/W)\, m g / (n-1)\)（规划需求，不是电机能力） | N 与 kgf |
 
 其中 \(n=6\)。六旋翼均布时 \(d_{\mathrm{adj}} = R\)。六旋翼 N-1 负担增量为 20%。
 
 \(c\) 是航电固定功率对应的电池质量；\(k\) 由旋翼面积、空气密度、figure of merit、驱动效率、续航和电池包比能量组成。
 
-非法输入（非正数、效率不在 \((0,1]\)）会抛出错误。若 \(F_{\min}>0\)，该行标记 `ENERGY_MASS_CLOSURE_INFEASIBLE`：`battery_mass_kg`、`total_mass_kg` 以及所有依赖闭合质量的推力 / 功率 / 电流字段为 JSON/CSV 空值，Markdown 写 `—`。一次开环结果只进入 `diagnostic_first_iteration_battery_mass_kg` 与 `diagnostic_non_battery_mass_power_w`。固定点迭代失败不得当作数学无解。
+非法输入（非正数、效率不在 \((0,1]\)、布尔值冒充数值、非整数值被截成整数、重复场景名或重复桨径）会抛出带字段路径的 `InvalidInputError`。CLI 捕获全部 `AnalysisError` 与 `OSError`：在 stderr 输出单行 `ERROR`，以退出码 1 结束，不打印 traceback，也不写伪成功报告。若 \(F_{\min}>0\)，该行标记 `ENERGY_MASS_CLOSURE_INFEASIBLE`：`battery_mass_kg`、`total_mass_kg` 以及所有依赖闭合质量的推力 / 功率 / 电流字段为 JSON/CSV 空值，Markdown 写 `—`。一次开环结果只进入 `diagnostic_first_iteration_battery_mass_kg` 与 `diagnostic_non_battery_mass_power_w`。固定点迭代失败不得当作数学无解。
+
+`required_thrust_per_motor_at_target_tw_*` 与 `n1_required_thrust_per_remaining_motor_at_target_tw_*` 是目标推重比下的**推力需求**，不是实测电机最大能力。
 
 `battery_bus_current_a` 是按标称母线电压计算的总直流输入电流。它不是单电机相电流，也不模拟电压下陷、线损或峰值电流。报告同时给出单电机悬停理想 / 机械功率参考 `ideal_induced_power_per_motor_w`，但不能由此推导真实电机电流。
 
@@ -87,12 +90,21 @@ ros2 run arachne_hx6_analysis propulsion_report \
 
 只有当前 0.30 m 半径可以容纳，并且存在条件能量闭合时，联合门控才可为 `CONDITIONAL_CANDIDATE`；否则为 `REJECTED_FOR_CURRENT_BASELINE`。这不是采购或最终飞行可行性结论。
 
+JSON 顶层必须区分标称与分不确定性结果，不得把标称冒充成全局结论：
+
+- `any_conditional_candidate_nominal`
+- `combined_current_baseline_gate_summary_nominal`
+- `any_conditional_candidate_by_uncertainty`（必须含 `conservative` / `nominal` / `optimistic`）
+- `combined_current_baseline_gate_summary_by_uncertainty`（必须含上述三组）
+
 在标称规划输入下，当前三个桨径应为：
 
 - 4.7 in：几何通过，能量闭合失败
 - 12 in：能量条件闭合，当前几何失败
 - 15 in：能量条件闭合，当前几何失败
-- 当前骨架没有联合候选
+- 标称当前骨架没有联合候选
+
+乐观规划边界下，4.7 in 的 `g1_placeholder` / `planned` 可能同时满足几何与能量闭合，从而出现 `CONDITIONAL_CANDIDATE`。这仍不是可飞或采购结论，且不得回写到标称顶层字段。
 
 ## 规划假设（可修改，非实测）
 
@@ -133,7 +145,7 @@ YAML 中另有明确命名的 `conservative` / `nominal` / `optimistic` 规划�
 
 ## N-1 静态参考
 
-计算正常悬停单电机推力、单电机失效后剩余 5 台平均悬停推力、相对正常悬停的负担增量（六旋翼为 20%），以及指定推重比下的单电机推力要求。必须标记 `STATIC_THRUST_ONLY_NOT_CONTROL_AUTHORITY_PROOF`。真实单电机失效还取决于旋翼布局、偏航力矩、控制分配、剩余电机饱和和飞控；静态推力计算不能证明可安全容错飞行。
+计算正常悬停单电机推力、单电机失效后剩余 5 台平均悬停推力、相对正常悬停的负担增量（六旋翼为 20%），以及指定推重比下的单电机推力**需求**。必须标记 `STATIC_THRUST_ONLY_NOT_CONTROL_AUTHORITY_PROOF`。真实单电机失效还取决于旋翼布局、偏航力矩、控制分配、剩余电机饱和和飞控；静态推力计算不能证明可安全容错飞行。
 
 ## 未建模因素
 
