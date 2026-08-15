@@ -1,0 +1,117 @@
+# Arachne-HX6 G1.5 propulsion feasibility inputs.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# Every numeric value below is an editable planning input. None of these
+# numbers are measured hardware data, vendor datasheets, flight-test
+# results, or a procurement specification.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  G1 URDF placeholder masses, atmosphere, efficiencies, battery energy,
+  endurance, and geometry gaps are planning knobs. They must not be treated
+  as calibrated vehicle properties.
+
+constants:
+  # Standard gravity. Planning constant, not a local g measurement.
+  gravity_m_s2: 9.80665
+  # ISA sea-level density. Planning atmosphere, not a site weather value.
+  air_density_kg_m3: 1.225
+  rotor_count: 6
+
+propulsion:
+  # Planning hover/maneuver margin. Not a flight-tested thrust-to-weight.
+  thrust_to_weight_target: 1.8
+  # Planning figure of merit versus ideal momentum-theory induced power.
+  figure_of_merit: 0.65
+  # Planning combined motor + ESC electrical efficiency. Not a bench result.
+  motor_esc_efficiency: 0.80
+  # Planning 6S-class nominal bus. Not a selected battery pack.
+  bus_voltage_v: 22.2
+  # Planning compute/radio/sensor draw. Not a measured avionics budget.
+  avionics_power_w: 20.0
+
+battery:
+  # Planning usable energy fraction. Not a BMS or cell datasheet value.
+  usable_fraction: 0.80
+  # Planning pack-level specific energy. Not cell energy and not a vendor quote.
+  pack_specific_energy_wh_kg: 180.0
+  # Planning 10-minute hover-equivalent endurance target. Not a requirement freeze.
+  endurance_s: 600.0
+
+solver:
+  mass_tolerance_kg: 1.0e-6
+  max_iterations: 50
+
+geometry:
+  # G1 visual skeleton hex_arm_span. Must not be auto-written back to URDF.
+  current_motor_center_radius_m: 0.30
+  # Planning minimum propeller tip gap. Not a mechanical freeze.
+  min_tip_clearance_m: 0.02
+
+risk_flags:
+  # Planning warning thresholds only. Not certification limits.
+  battery_mass_fraction_warn: 0.45
+  disk_loading_n_m2_warn: 200.0
+
+propellers_inch:
+  # 4.7 in is near the G1 visual rotor disk (~0.12 m). Comparison only.
+  - 4.7
+  - 12.0
+  - 15.0
+
+mass_scenarios:
+  - name: g1_placeholder
+    non_battery_mass_kg: 7.16
+    description: >
+      Sum of G1 URDF placeholder link masses (~7.16 kg). Planning input only.
+      This value may exclude real battery, motors, ESCs, wiring harness, and
+      structural reinforcement mass.
+  - name: planned
+    non_battery_mass_kg: 12.0
+    description: >
+      Planning non-battery mass including estimated actuators and structure.
+      Not a weighed vehicle.
+  - name: growth
+    non_battery_mass_kg: 16.0
+    description: >
+      Growth / contingency non-battery mass. Not a specification freeze.
+
+# Named planning bounds, not measured vehicle data. Overlay these fields
+# onto the top-level constants when reporting a result range. They are
+# editable analysis knobs and must not be treated as flight-test values.
+uncertainty_cases:
+  conservative:
+    description: >
+      Conservative planning bound. Lower density, FoM, drive efficiency,
+      pack energy and usable fraction; higher avionics draw. Not a measured
+      worst-case envelope.
+    air_density_kg_m3: 1.112
+    figure_of_merit: 0.55
+    motor_esc_efficiency: 0.70
+    pack_specific_energy_wh_kg: 140.0
+    usable_fraction: 0.70
+    avionics_power_w: 40.0
+  nominal:
+    description: >
+      Nominal planning bound. Matches the top-level constants in this file.
+      Not a calibrated vehicle property.
+    air_density_kg_m3: 1.225
+    figure_of_merit: 0.65
+    motor_esc_efficiency: 0.80
+    pack_specific_energy_wh_kg: 180.0
+    usable_fraction: 0.80
+    avionics_power_w: 20.0
+  optimistic:
+    description: >
+      Optimistic planning bound. Higher FoM, drive efficiency, pack energy
+      and usable fraction; lower avionics draw. Not a demonstrated capability.
+    air_density_kg_m3: 1.225
+    figure_of_merit: 0.75
+    motor_esc_efficiency: 0.88
+    pack_specific_energy_wh_kg: 220.0
+    usable_fraction: 0.90
+    avionics_power_w: 12.0

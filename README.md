@@ -8,6 +8,17 @@
 
 本阶段不接入 Gazebo、PX4、真实硬件或旋翼升力 / 动力学。上部六旋翼为固定在机身上的平面 X 构型视觉骨架；左右 `sensor_pod` 为固定的非发射式任务舱占位。
 
+## G1.5 推进可行性分析（ANALYSIS_ONLY）
+
+离线质量—桨盘—推力—功率—电池—几何计算见 `docs/G1_5_PROPULSION_FEASIBILITY.md` 与包 `arachne_hx6_analysis`。结果标记为 **ANALYSIS_ONLY / NOT_FOR_PROCUREMENT**。能量质量闭合只是条件电池反馈解，不是整机质量闭合或可飞结论；整机推进可行性保持 `UNDETERMINED`。JSON 顶层候选标志区分为标称（`*_nominal`）与分不确定性（`*_by_uncertainty`），不得把标称结果当成全局结论。本阶段不修改 G1 URDF。
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/arachne_hx6_ws
+source install/setup.bash
+ros2 run arachne_hx6_analysis propulsion_report --output-dir /tmp/arachne_g1_5_report
+```
+
 ## 工作区路径
 
 以下命令默认从工作区根目录执行。示例使用 `~/arachne_hx6_ws`，你可以把工作区放在任意其他路径，把该目录换成实际位置即可。
