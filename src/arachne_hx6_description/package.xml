@@ -4,7 +4,7 @@
   <name>arachne_hx6_description</name>
   <version>0.0.0</version>
   <description>G1 low-load digital skeleton (Xacro/URDF/RViz) for Arachne-HX6.</description>
-  <maintainer email="lijunhao@todo.todo">lijunhao</maintainer>
+  <maintainer email="289059546+LiJunHao666666@users.noreply.github.com">LiJunHao666666</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -15,10 +15,13 @@
   <exec_depend>joint_state_publisher</exec_depend>
   <exec_depend>joint_state_publisher_gui</exec_depend>
   <exec_depend>rviz2</exec_depend>
+  <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
+  <test_depend>xacro</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

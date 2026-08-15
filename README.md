@@ -8,22 +8,36 @@
 
 本阶段不接入 Gazebo、PX4、真实硬件或旋翼升力 / 动力学。上部六旋翼为固定在机身上的平面 X 构型视觉骨架；左右 `sensor_pod` 为固定的非发射式任务舱占位。
 
+## 工作区路径
+
+以下命令默认从工作区根目录执行。示例使用 `~/arachne_hx6_ws`，你可以把工作区放在任意其他路径，把该目录换成实际位置即可。
+
+```bash
+cd ~/arachne_hx6_ws
+```
+
 ## 构建
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-cd /home/lijunhao/arachne_hx6_ws
+cd ~/arachne_hx6_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
 
 ## 在 RViz 中显示并操纵关节
 
-默认以站立姿态启动（`initial_pose:=standing`）：
+先进入工作区并加载环境：
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-source /home/lijunhao/arachne_hx6_ws/install/setup.bash
+cd ~/arachne_hx6_ws
+source install/setup.bash
+```
+
+默认以站立姿态启动（`initial_pose:=standing`）。RViz 地面网格位于约 `z = -0.22 m`，与当前站立足端高度对齐；`base_link` 仍在机身中心。
+
+```bash
 ros2 launch arachne_hx6_description display.launch.py
 ```
 
@@ -45,7 +59,7 @@ ros2 launch arachne_hx6_description display.launch.py initial_pose:=zero
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-cd /home/lijunhao/arachne_hx6_ws
+cd ~/arachne_hx6_ws
 xacro src/arachne_hx6_description/urdf/arachne_hx6.urdf.xacro > /tmp/arachne_hx6.urdf
 check_urdf /tmp/arachne_hx6.urdf
 ```
@@ -59,3 +73,12 @@ check_urdf /tmp/arachne_hx6.urdf
 - `<leg>_tibia_joint`
 
 零位时腿沿安装偏航水平伸出。`coxa` 左右摆动，`femur` / `tibia` 俯仰用于抬腿、展开和收拢演示。
+
+## 已知限制与采购边界
+
+- 站立角不是硬件标定值或步态工作点，仅用于 RViz 运动学展示。
+- 质量、惯性和碰撞几何都是占位估算，不能用于动力学、负载或结构强度结论。
+- `sensor_pod` 与 coxa 静态间隙约 1 mm，机械冻结前必须重构。
+- femur 与旋翼盘最近约 2 cm，必须进行扫掠体积和自碰撞分析。
+- 当前没有旋翼动力学、飞行控制或模式切换。
+- 当前版本不允许作为硬件采购依据。
