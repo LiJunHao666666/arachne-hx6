@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Fixed planar X-hex visual skeleton. No lift or rotor dynamics. -->
+
+  <xacro:macro name="hexarotor_arm" params="name yaw">
+    <joint name="${name}_arm_joint" type="fixed">
+      <parent link="hex_hub"/>
+      <child link="${name}_arm"/>
+      <origin xyz="0 0 0" rpy="0 0 ${yaw}"/>
+    </joint>
+    <link name="${name}_arm">
+      <visual>
+        <origin xyz="${hex_hub_radius + hex_arm_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${hex_arm_length} ${hex_arm_width} ${hex_arm_height}"/>
+        </geometry>
+        <material name="flight_color"/>
+      </visual>
+      <collision>
+        <origin xyz="${hex_hub_radius + hex_arm_length / 2.0} 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${hex_arm_length} ${hex_arm_width} ${hex_arm_height}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial
+        mass="${hex_arm_mass}"
+        x="${hex_arm_length}"
+        y="${hex_arm_width}"
+        z="${hex_arm_height}"
+        xyz="${hex_hub_radius + hex_arm_length / 2.0} 0 0"/>
+    </link>
+
+    <joint name="${name}_rotor_joint" type="fixed">
+      <parent link="${name}_arm"/>
+      <child link="${name}_rotor"/>
+      <origin xyz="${hex_arm_span} 0 ${hex_rotor_z_offset}" rpy="0 0 0"/>
+    </joint>
+    <link name="${name}_rotor">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${hex_rotor_radius}" length="${hex_rotor_height}"/>
+        </geometry>
+        <material name="flight_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${hex_rotor_radius}" length="${hex_rotor_height}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial_z
+        mass="${hex_rotor_mass}"
+        radius="${hex_rotor_radius}"
+        length="${hex_rotor_height}"/>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="hexarotor_x_skeleton">
+    <joint name="hex_hub_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="hex_hub"/>
+      <origin xyz="0 0 ${hex_hub_z}" rpy="0 0 0"/>
+    </joint>
+    <link name="hex_hub">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${hex_hub_radius}" length="${hex_hub_height}"/>
+        </geometry>
+        <material name="flight_color"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="${hex_hub_radius}" length="${hex_hub_height}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertial_z
+        mass="${hex_hub_mass}"
+        radius="${hex_hub_radius}"
+        length="${hex_hub_height}"/>
+    </link>
+
+    <!-- X-hex: no rotor on the +X axis; arms at ±30°, ±90°, ±150°. -->
+    <xacro:hexarotor_arm name="hex_1" yaw="${hex_yaw_1}"/>
+    <xacro:hexarotor_arm name="hex_2" yaw="${hex_yaw_2}"/>
+    <xacro:hexarotor_arm name="hex_3" yaw="${hex_yaw_3}"/>
+    <xacro:hexarotor_arm name="hex_4" yaw="${hex_yaw_4}"/>
+    <xacro:hexarotor_arm name="hex_5" yaw="${hex_yaw_5}"/>
+    <xacro:hexarotor_arm name="hex_6" yaw="${hex_yaw_6}"/>
+  </xacro:macro>
+</robot>

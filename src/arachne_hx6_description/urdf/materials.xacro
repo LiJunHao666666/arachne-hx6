@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Shared materials and inertial helpers for the G1 digital skeleton. -->
+
+  <material name="body_color">
+    <color rgba="0.22 0.24 0.28 1.0"/>
+  </material>
+  <material name="left_leg_color">
+    <color rgba="0.20 0.48 0.78 1.0"/>
+  </material>
+  <material name="right_leg_color">
+    <color rgba="0.86 0.46 0.16 1.0"/>
+  </material>
+  <material name="flight_color">
+    <color rgba="0.52 0.74 0.80 1.0"/>
+  </material>
+  <material name="camera_color">
+    <color rgba="0.10 0.11 0.13 1.0"/>
+  </material>
+  <material name="sensor_pod_color">
+    <color rgba="0.28 0.62 0.36 1.0"/>
+  </material>
+
+  <xacro:macro name="box_inertial" params="mass x y z xyz:='0 0 0'">
+    <inertial>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass / 12.0 * (y * y + z * z)}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${mass / 12.0 * (x * x + z * z)}"
+        iyz="0.0"
+        izz="${mass / 12.0 * (x * x + y * y)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cylinder_inertial_x" params="mass radius length xyz:='0 0 0'">
+    <inertial>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${0.5 * mass * radius * radius}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${mass * (3.0 * radius * radius + length * length) / 12.0}"
+        iyz="0.0"
+        izz="${mass * (3.0 * radius * radius + length * length) / 12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cylinder_inertial_z" params="mass radius length xyz:='0 0 0'">
+    <inertial>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (3.0 * radius * radius + length * length) / 12.0}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${mass * (3.0 * radius * radius + length * length) / 12.0}"
+        iyz="0.0"
+        izz="${0.5 * mass * radius * radius}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="sphere_inertial" params="mass radius xyz:='0 0 0'">
+    <inertial>
+      <origin xyz="${xyz}" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${0.4 * mass * radius * radius}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${0.4 * mass * radius * radius}"
+        iyz="0.0"
+        izz="${0.4 * mass * radius * radius}"/>
+    </inertial>
+  </xacro:macro>
+</robot>
