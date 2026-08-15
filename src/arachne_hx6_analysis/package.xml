@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>arachne_hx6_analysis</name>
+  <version>0.0.0</version>
+  <description>G1.5 ANALYSIS_ONLY propulsion feasibility calculations for Arachne-HX6.</description>
+  <maintainer email="289059546+LiJunHao666666@users.noreply.github.com">LiJunHao666666</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>ament_index_python</depend>
+  <depend>python3-yaml</depend>
+
+  <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-yaml</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
