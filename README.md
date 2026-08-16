@@ -30,6 +30,21 @@ source install/setup.bash
 ros2 run arachne_hx6_analysis architecture_report --output-dir /tmp/arachne_g2_report
 ```
 
+## G3 需求、证据账本与不确定性门控（ANALYSIS_ONLY）
+
+离线需求合同、证据等级、G2 19 项质量区间、几何不确定性预算、收拢机构需求和双向追踪见包 `arachne_hx6_analysis` 的 G3 模块，以及 `docs/G3_REQUIREMENTS_EVIDENCE_GATES.md`。结果标记为 **ANALYSIS_ONLY / NOT_FOR_PROCUREMENT**。G3 不会把缺失证据、PLANNING_ASSUMPTION 或混合不充分证据写成通过，也不会输出可飞、采购或硬件验证结论。最高正式门控是 `EVIDENCE_COMPLETE_FOR_NEXT_ANALYSIS`。当前生产配置保持 `procurement_allowed: false`，`overall_system_readiness: UNDETERMINED`。
+
+完成 G3 不会自动允许采购、实体组装或进入下一阶段。只有安全需求、质量/证据账本、风险评估、场地规则及正式审批全部满足，并由独立正式门控明确批准后，采购状态才可能改变。本阶段不修改 G1 URDF，也不改变 G1.5 / G2 的数学或报告合同。
+
+若后续讨论实体概念演示，模型必须全程由封闭导轨、系留或机械限位约束，不得自由脱离或自推进；速度、动能、材料、夹伤距离和停止距离必须经过安全评估，并具备防护罩、急停和人工控制。视觉识别结果不得直接连接到任何危险动作。
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/arachne_hx6_ws
+source install/setup.bash
+ros2 run arachne_hx6_analysis requirements_report --output-dir /tmp/arachne_g3_report
+```
+
 ## 工作区路径
 
 以下命令默认从工作区根目录执行。示例使用 `~/arachne_hx6_ws`，你可以把工作区放在任意其他路径，把该目录换成实际位置即可。

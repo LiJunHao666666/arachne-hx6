@@ -1,0 +1,30 @@
+# Arachne-HX6 G3 stow-mechanism requirements contract.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# Hardware stow limits are unknown. Do not invent millimetre, newton,
+# or second values. analysis_stowed remains UNQUALIFIED_ANALYSIS_POSE.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  Stow hardware limits are undefined. The G2 analysis_stowed pose is an
+  unqualified analysis pose only. This file is a data contract, not a
+  validated fold, lock, or packing specification.
+
+maximum_stowed_length_m: null
+maximum_stowed_width_m: null
+maximum_stowed_height_m: null
+minimum_rotor_to_leg_clearance_m: null
+maximum_transition_time_s: null
+actuator_torque_lower_nm: null
+actuator_torque_upper_nm: null
+lock_load_capacity_n: null
+lock_stiffness_nm_per_rad: null
+position_repeatability_rad: null
+power_loss_safe_state: null
+landing_deployment_condition: null
+flight_lock_verification_method: null
+emergency_recovery_requirement: null

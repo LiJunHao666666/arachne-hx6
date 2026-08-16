@@ -1,0 +1,1188 @@
+# Arachne-HX6 G3 evidence ledger and G2 19-item mass components.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# Real hardware evidence stays MISSING. Process/charter records may be
+# PLANNING_ASSUMPTION. Do not treat G1.5 7.16 / 12 / 16 kg as part masses.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  Hardware evidence is missing. Process records document analysis-only
+  contracts. PLANNING_ASSUMPTION cannot close procurement or structure freeze.
+
+mass_components:
+  - component_id: frame_and_body
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-001
+    notes: G1 body_mass is a visual placeholder only.
+  - component_id: six_leg_structures
+    quantity: 6
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-002
+    notes: Six-leg topology count. No weighed structure.
+  - component_id: eighteen_leg_actuators
+    quantity: 18
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-003
+    notes: Eighteen-joint topology count. No selected actuators.
+  - component_id: six_motors
+    quantity: 6
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-004
+    notes: Hexarotor topology count. No motor mass evidence.
+  - component_id: six_escs
+    quantity: 6
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-005
+    notes: One ESC per motor. No ESC mass evidence.
+  - component_id: propellers_and_hubs
+    quantity: 6
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-006
+    notes: One propeller set per motor. No hub or blade mass.
+  - component_id: arm_extensions_and_reinforcement
+    quantity: 6
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-007
+    notes: Arm growth for larger radii is unweighed.
+  - component_id: power_distribution
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-008
+    notes: No PDB or power-module mass evidence.
+  - component_id: high_current_wiring
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-009
+    notes: No harness gauge, length, or weighed cable set.
+  - component_id: connectors_and_protection
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-010
+    notes: No connector, fuse, or protection-device mass.
+  - component_id: flight_controller
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-011
+    notes: No selected flight controller.
+  - component_id: companion_computer
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-012
+    notes: No selected companion computer.
+  - component_id: navigation_sensors
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-013
+    notes: No GNSS / IMU / rangefinder hardware mass.
+  - component_id: rescue_environment_sensors
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-014
+    notes: sensor_pod is a non-launching placeholder, not a weighed payload.
+  - component_id: cooling
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-015
+    notes: No thermal hardware mass.
+  - component_id: folding_and_locking_mechanism
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-016
+    notes: analysis_stowed is not a hardware fold mechanism.
+  - component_id: battery_container
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-017
+    notes: Battery enclosure mass is unknown.
+  - component_id: enclosure_and_fasteners
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-018
+    notes: No fastener, cover, or enclosure mass evidence.
+  - component_id: contingency_allowance
+    quantity: 1
+    mass_lower_kg: null
+    mass_upper_kg: null
+    evidence_id: EV-MASS-019
+    notes: No justified contingency mass. Must not be filled with zero.
+
+evidence:
+  - evidence_id: EV-MASS-001
+    component_id: frame_and_body
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-STRUCT-001]
+    status: MISSING
+    notes: No weighed frame.
+  - evidence_id: EV-MASS-002
+    component_id: six_leg_structures
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-STRUCT-003]
+    status: MISSING
+    notes: No weighed leg structure.
+  - evidence_id: EV-MASS-003
+    component_id: eighteen_leg_actuators
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-STRUCT-004]
+    status: MISSING
+    notes: No actuator mass evidence.
+  - evidence_id: EV-MASS-004
+    component_id: six_motors
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-PROP-001]
+    status: MISSING
+    notes: No motor mass evidence.
+  - evidence_id: EV-MASS-005
+    component_id: six_escs
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-PROP-002]
+    status: MISSING
+    notes: No ESC mass evidence.
+  - evidence_id: EV-MASS-006
+    component_id: propellers_and_hubs
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-PROP-003]
+    status: MISSING
+    notes: No propeller or hub mass evidence.
+  - evidence_id: EV-MASS-007
+    component_id: arm_extensions_and_reinforcement
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-STRUCT-002]
+    status: MISSING
+    notes: No arm-extension mass evidence.
+  - evidence_id: EV-MASS-008
+    component_id: power_distribution
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-POWER-001]
+    status: MISSING
+    notes: No power-distribution mass evidence.
+  - evidence_id: EV-MASS-009
+    component_id: high_current_wiring
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-POWER-003]
+    status: MISSING
+    notes: No wiring mass evidence.
+  - evidence_id: EV-MASS-010
+    component_id: connectors_and_protection
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-POWER-003]
+    status: MISSING
+    notes: No connector mass evidence.
+  - evidence_id: EV-MASS-011
+    component_id: flight_controller
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-CTRL-002]
+    status: MISSING
+    notes: No flight-controller mass evidence.
+  - evidence_id: EV-MASS-012
+    component_id: companion_computer
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002]
+    status: MISSING
+    notes: No companion-computer mass evidence.
+  - evidence_id: EV-MASS-013
+    component_id: navigation_sensors
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-SENSE-001]
+    status: MISSING
+    notes: No navigation-sensor mass evidence.
+  - evidence_id: EV-MASS-014
+    component_id: rescue_environment_sensors
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-SENSE-002]
+    status: MISSING
+    notes: No rescue-sensor mass evidence.
+  - evidence_id: EV-MASS-015
+    component_id: cooling
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-THERM-001]
+    status: MISSING
+    notes: No cooling mass evidence.
+  - evidence_id: EV-MASS-016
+    component_id: folding_and_locking_mechanism
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-STRUCT-005]
+    status: MISSING
+    notes: No fold-mechanism mass evidence.
+  - evidence_id: EV-MASS-017
+    component_id: battery_container
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002, SYS-POWER-001]
+    status: MISSING
+    notes: No battery-container mass evidence.
+  - evidence_id: EV-MASS-018
+    component_id: enclosure_and_fasteners
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002]
+    status: MISSING
+    notes: No enclosure mass evidence.
+  - evidence_id: EV-MASS-019
+    component_id: contingency_allowance
+    parameter: mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002]
+    status: MISSING
+    notes: Contingency must not be filled with zero.
+  - evidence_id: EV-MASS-020
+    component_id: vehicle
+    parameter: center_of_gravity
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-003]
+    status: MISSING
+    notes: No CG measurement.
+  - evidence_id: EV-GEO-001
+    component_id: geometry_uncertainty
+    parameter: manufacturing_tolerance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No manufacturing tolerance evidence.
+  - evidence_id: EV-GEO-002
+    component_id: geometry_uncertainty
+    parameter: assembly_tolerance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No assembly tolerance evidence.
+  - evidence_id: EV-GEO-003
+    component_id: geometry_uncertainty
+    parameter: motor_mount_position_error
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No motor-mount error evidence.
+  - evidence_id: EV-GEO-004
+    component_id: geometry_uncertainty
+    parameter: propeller_radius_tolerance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No propeller radius tolerance evidence.
+  - evidence_id: EV-GEO-005
+    component_id: geometry_uncertainty
+    parameter: propeller_tracking_or_flapping_allowance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No flapping allowance evidence.
+  - evidence_id: EV-GEO-006
+    component_id: geometry_uncertainty
+    parameter: structural_deflection_allowance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No deflection evidence.
+  - evidence_id: EV-GEO-007
+    component_id: geometry_uncertainty
+    parameter: leg_joint_zero_error
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No joint-zero evidence.
+  - evidence_id: EV-GEO-008
+    component_id: geometry_uncertainty
+    parameter: sensor_pod_installation_error
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003, SYS-SENSE-003]
+    status: MISSING
+    notes: No sensor-pod installation error evidence.
+  - evidence_id: EV-GEO-009
+    component_id: geometry_uncertainty
+    parameter: cable_connector_intrusion_allowance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: MISSING
+    notes: No cable intrusion evidence.
+  - evidence_id: EV-ARM-001
+    component_id: arm_extension
+    parameter: linear_mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg/m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STRUCT-002]
+    status: MISSING
+    notes: No linear arm mass evidence. Do not invent kg/m.
+  - evidence_id: EV-ARM-002
+    component_id: arm_extension
+    parameter: connector_mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STRUCT-002]
+    status: MISSING
+    notes: No connector mass evidence.
+  - evidence_id: EV-ARM-003
+    component_id: arm_extension
+    parameter: wiring_mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg/m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STRUCT-002]
+    status: MISSING
+    notes: No extension wiring mass evidence.
+  - evidence_id: EV-ARM-004
+    component_id: arm_extension
+    parameter: reinforcement_mass
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: kg
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STRUCT-002]
+    status: MISSING
+    notes: No reinforcement mass evidence.
+  - evidence_id: EV-STOW-001
+    component_id: stow_mechanism
+    parameter: stowed_envelope
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-001]
+    status: MISSING
+    notes: No stowed envelope requirement evidence.
+  - evidence_id: EV-STOW-002
+    component_id: stow_mechanism
+    parameter: rotor_leg_clearance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-002]
+    status: MISSING
+    notes: No stowed rotor-to-leg clearance evidence.
+  - evidence_id: EV-STOW-003
+    component_id: stow_mechanism
+    parameter: transition_time
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: s
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-003]
+    status: MISSING
+    notes: No transition-time evidence.
+  - evidence_id: EV-STOW-004
+    component_id: stow_mechanism
+    parameter: actuator_torque
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: N*m
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-004]
+    status: MISSING
+    notes: No fold-actuator torque evidence.
+  - evidence_id: EV-STOW-005
+    component_id: stow_mechanism
+    parameter: lock_load
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: N
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-005]
+    status: MISSING
+    notes: No lock-load evidence.
+  - evidence_id: EV-STOW-006
+    component_id: stow_mechanism
+    parameter: lock_stiffness
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: N*m/rad
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-005]
+    status: MISSING
+    notes: No lock-stiffness evidence.
+  - evidence_id: EV-STOW-007
+    component_id: stow_mechanism
+    parameter: position_repeatability
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: rad
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-006]
+    status: MISSING
+    notes: No repeatability evidence.
+  - evidence_id: EV-STOW-008
+    component_id: stow_mechanism
+    parameter: power_loss_safe_state
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-007]
+    status: MISSING
+    notes: No power-loss safe-state definition.
+  - evidence_id: EV-STOW-009
+    component_id: stow_mechanism
+    parameter: landing_deployment_condition
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-008]
+    status: MISSING
+    notes: No landing-deployment condition.
+  - evidence_id: EV-STOW-010
+    component_id: stow_mechanism
+    parameter: flight_lock_verification
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-009]
+    status: MISSING
+    notes: No flight-lock verification method.
+  - evidence_id: EV-STOW-011
+    component_id: stow_mechanism
+    parameter: emergency_recovery
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-010]
+    status: MISSING
+    notes: No emergency-recovery requirement evidence.
+  - evidence_id: EV-STOW-012
+    component_id: stow_mechanism
+    parameter: hardware_pose_validation
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-011]
+    status: MISSING
+    notes: analysis_stowed is not hardware-validated.
+  - evidence_id: EV-PROP-001
+    component_id: propulsion
+    parameter: motor_performance
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-PROP-001]
+    status: MISSING
+    notes: No motor bench or datasheet evidence.
+  - evidence_id: EV-PROP-002
+    component_id: propulsion
+    parameter: esc_rating
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-PROP-002]
+    status: MISSING
+    notes: No ESC evidence.
+  - evidence_id: EV-PROP-003
+    component_id: propulsion
+    parameter: propeller_map
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-PROP-003]
+    status: MISSING
+    notes: No propeller map evidence.
+  - evidence_id: EV-PROP-004
+    component_id: propulsion
+    parameter: bench_thrust_power
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-PROP-004]
+    status: MISSING
+    notes: No propulsion bench evidence.
+  - evidence_id: EV-POWER-001
+    component_id: power
+    parameter: battery_pack
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-POWER-001]
+    status: MISSING
+    notes: No battery-pack evidence.
+  - evidence_id: EV-POWER-002
+    component_id: power
+    parameter: usable_energy
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-POWER-002]
+    status: MISSING
+    notes: No usable-energy evidence.
+  - evidence_id: EV-CTRL-001
+    component_id: control
+    parameter: mode_switch
+    evidence_level: MISSING
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: null
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-CTRL-001]
+    status: MISSING
+    notes: No walk/flight mode-switch evidence.
+  - evidence_id: EV-PROC-001
+    component_id: analysis_process
+    parameter: analysis_only_banner
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 analysis contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-SAFE-005]
+    status: PLANNING_ASSUMPTION
+    notes: Official reports must keep ANALYSIS_ONLY / NOT_FOR_PROCUREMENT banners.
+  - evidence_id: EV-PROC-002
+    component_id: analysis_process
+    parameter: planning_mass_not_parts
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G1.5 propulsion_scenarios.yaml mass_scenarios
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-MASS-004]
+    status: PLANNING_ASSUMPTION
+    notes: 7.16 / 12 / 16 kg are planning labels, not part evidence.
+  - evidence_id: EV-PROC-003
+    component_id: analysis_process
+    parameter: no_nominal_to_robust
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G2/G3 geometry contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-002]
+    status: PLANNING_ASSUMPTION
+    notes: Nominal CLEARANCE_MET is not a robust pass.
+  - evidence_id: EV-PROC-004
+    component_id: analysis_process
+    parameter: no_energy_as_vehicle_closure
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G1.5 energy-mass closure contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-PROP-005]
+    status: PLANNING_ASSUMPTION
+    notes: Conditional energy-mass closure is not whole-vehicle closure.
+  - evidence_id: EV-PROC-005
+    component_id: safety
+    parameter: non_weaponization
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: project charter / README
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-SAFE-001]
+    status: PLANNING_ASSUMPTION
+    notes: Non-weaponized disaster-response and inspection role.
+  - evidence_id: EV-PROC-006
+    component_id: safety
+    parameter: sensor_pod_non_launching
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G1 description / project charter
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-SAFE-002]
+    status: PLANNING_ASSUMPTION
+    notes: sensor_pod is a non-launching payload placeholder.
+  - evidence_id: EV-PROC-007
+    component_id: analysis_process
+    parameter: no_evidence_auto_upgrade
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 evidence-level contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-TRACE-003]
+    status: PLANNING_ASSUMPTION
+    notes: Evidence levels cannot auto-upgrade.
+  - evidence_id: EV-PROC-008
+    component_id: analysis_process
+    parameter: traceability_contract
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 traceability contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-TRACE-001, SYS-TRACE-002]
+    status: PLANNING_ASSUMPTION
+    notes: Bidirectional traceability is required. Coverage is not a pass.
+  - evidence_id: EV-PROC-009
+    component_id: analysis_process
+    parameter: combination_method_explicit
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 uncertainty contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-GEO-004]
+    status: PLANNING_ASSUMPTION
+    notes: Combination method must be recorded. No silent default.
+  - evidence_id: EV-PROC-010
+    component_id: analysis_process
+    parameter: no_px4_claim
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 control-scope contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-CTRL-003]
+    status: PLANNING_ASSUMPTION
+    notes: This gate does not integrate PX4 or claim real-time control.
+  - evidence_id: EV-PROC-011
+    component_id: analysis_process
+    parameter: structure_freeze_blocked
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 structure-freeze contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STRUCT-006]
+    status: PLANNING_ASSUMPTION
+    notes: Structure freeze stays blocked without hardware evidence.
+  - evidence_id: EV-PROC-012
+    component_id: analysis_process
+    parameter: stow_pose_unqualified
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G2 analysis_stowed contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-STOW-011]
+    status: PLANNING_ASSUMPTION
+    notes: analysis_stowed is UNQUALIFIED_ANALYSIS_POSE.
+  - evidence_id: EV-PROC-013
+    component_id: analysis_process
+    parameter: procurement_forbidden
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 procurement contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-SAFE-004]
+    status: PLANNING_ASSUMPTION
+    notes: procurement_allowed remains false.
+  - evidence_id: EV-PROC-014
+    component_id: safety
+    parameter: operational_safety_undetermined
+    evidence_level: PLANNING_ASSUMPTION
+    value: null
+    lower: null
+    upper: null
+    unit: null
+    source: G3 safety contract
+    source_date: null
+    measurement_method: null
+    sample_count: null
+    uncertainty: null
+    linked_requirement_ids: [SYS-SAFE-003]
+    status: PLANNING_ASSUMPTION
+    notes: Operational safety stays UNDETERMINED without hardware evidence.

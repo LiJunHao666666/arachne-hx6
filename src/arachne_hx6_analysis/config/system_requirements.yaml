@@ -1,0 +1,938 @@
+# Arachne-HX6 G3 system requirements and planned tests.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# Hardware thresholds stay null. Do not invent "reasonable" values.
+# Quantitative nulls produce INCOMPLETE_REQUIREMENT.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  Formal requirements, evidence links, and planned tests for Arachne-HX6.
+  Hardware numeric limits are unknown. This file is an engineering contract,
+  not a flyable, procurement, or hardware-validation conclusion. Completing
+  G3 does not unlock procurement, physical assembly, or the next stage.
+
+tests:
+  - test_id: TEST-MASS-001
+    title: Weigh the 19 G2 mass-ledger items
+    method: component weigh with recorded equipment and sample count
+    linked_requirement_ids: [SYS-MASS-001, SYS-MASS-002]
+    status: NOT_PERFORMED
+    notes: No hardware has been purchased or weighed.
+  - test_id: TEST-MASS-002
+    title: Measure vehicle center of gravity
+    method: CG measurement of a complete article
+    linked_requirement_ids: [SYS-MASS-003]
+    status: NOT_PERFORMED
+    notes: No complete article exists.
+  - test_id: TEST-GEO-001
+    title: Measure geometry uncertainty sources
+    method: tolerance stack from CAD, assembly, and deflection evidence
+    linked_requirement_ids: [SYS-GEO-001, SYS-GEO-003]
+    status: NOT_PERFORMED
+    notes: No CAD tolerance or assembly evidence.
+  - test_id: TEST-STOW-001
+    title: Measure stowed envelope
+    method: hardware envelope measurement of a qualified stow pose
+    linked_requirement_ids: [SYS-STOW-001]
+    status: NOT_PERFORMED
+    notes: analysis_stowed is not a hardware pose.
+  - test_id: TEST-STOW-002
+    title: Lock load and stiffness test
+    method: static lock-load and stiffness test
+    linked_requirement_ids: [SYS-STOW-005]
+    status: NOT_PERFORMED
+    notes: No lock hardware.
+  - test_id: TEST-PROP-001
+    title: Propulsion bench
+    method: motor-ESC-propeller thrust and power bench
+    linked_requirement_ids: [SYS-PROP-004]
+    status: NOT_PERFORMED
+    notes: No bench, motor, ESC, or propeller.
+  - test_id: TEST-STRUCT-001
+    title: Arm-extension mass interval
+    method: weigh extension, connector, wiring, and reinforcement
+    linked_requirement_ids: [SYS-STRUCT-002]
+    status: NOT_PERFORMED
+    notes: Do not invent kilograms per metre.
+  - test_id: TEST-SAFE-001
+    title: Design inspection for non-weaponization
+    method: design inspection of repository and payload interfaces
+    linked_requirement_ids: [SYS-SAFE-001, SYS-SAFE-002]
+    status: NOT_PERFORMED
+    notes: Planned inspection record. Not a hardware test.
+  - test_id: TEST-TRACE-001
+    title: Traceability audit
+    method: audit requirement-evidence-test-report links
+    linked_requirement_ids: [SYS-TRACE-001, SYS-MASS-004]
+    status: NOT_PERFORMED
+    notes: Coverage is diagnostic only.
+
+requirements:
+  - requirement_id: SYS-MASS-001
+    title: Itemized non-battery mass ledger completeness
+    category: SYS-MASS
+    description: The G2 19-item non-battery mass ledger must be complete before a whole-vehicle mass interval is claimed.
+    rationale: Missing part masses cannot be treated as zero.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-001, EV-MASS-002, EV-MASS-003, EV-MASS-004, EV-MASS-005, EV-MASS-006, EV-MASS-007, EV-MASS-008, EV-MASS-009, EV-MASS-010, EV-MASS-011, EV-MASS-012, EV-MASS-013, EV-MASS-014, EV-MASS-015, EV-MASS-016, EV-MASS-017, EV-MASS-018, EV-MASS-019]
+    linked_test_ids: [TEST-MASS-001]
+    linked_report_fields: [mass_ledger_status, missing_component_ids]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: Reuses the G2 19-item list. No new conflicting parts list.
+    kind: qualitative
+  - requirement_id: SYS-MASS-002
+    title: Whole-vehicle mass interval
+    category: SYS-MASS
+    description: When every required component has a finite lower and upper mass, total_lower = sum(quantity * lower) and total_upper = sum(quantity * upper).
+    rationale: Interval propagation must not collapse to a midpoint or treat null as 0.
+    verification_method: ANALYSIS_AND_TEST
+    required_evidence_ids: [EV-MASS-001, EV-MASS-002, EV-MASS-003, EV-MASS-004, EV-MASS-005, EV-MASS-006, EV-MASS-007, EV-MASS-008, EV-MASS-009, EV-MASS-010, EV-MASS-011, EV-MASS-012, EV-MASS-013, EV-MASS-014, EV-MASS-015, EV-MASS-016, EV-MASS-017, EV-MASS-018, EV-MASS-019]
+    linked_test_ids: [TEST-MASS-001]
+    linked_report_fields: [total_mass_lower_kg, total_mass_upper_kg, component_mass_interval_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: all_configurations
+    blocking: true
+    notes: No real vehicle mass interval exists.
+    kind: quantitative
+  - requirement_id: SYS-MASS-003
+    title: Center-of-gravity bounds
+    category: SYS-MASS
+    description: Vehicle CG bounds must be measured or vendor-declared before they are used in later analysis.
+    rationale: No CG evidence exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-020]
+    linked_test_ids: [TEST-MASS-002]
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: all_configurations
+    blocking: true
+    notes: No CG measurement.
+    kind: quantitative
+  - requirement_id: SYS-MASS-004
+    title: Planning scenario masses are not part evidence
+    category: SYS-MASS
+    description: G1.5 7.16 / 12 / 16 kg planning scenarios must not be written into the component ledger or treated as weighed parts.
+    rationale: Those values are overall planning boundaries only.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-002]
+    linked_test_ids: [TEST-TRACE-001]
+    linked_report_fields: [planning_scenario_comparison]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: Comparison labels only.
+    kind: qualitative
+  - requirement_id: SYS-GEO-001
+    title: Geometry uncertainty budget completeness
+    category: SYS-GEO
+    description: All nine required uncertainty sources must have evidence before a total allowance is computed.
+    rationale: A partial stack must not be summed as if complete.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-GEO-001, EV-GEO-002, EV-GEO-003, EV-GEO-004, EV-GEO-005, EV-GEO-006, EV-GEO-007, EV-GEO-008, EV-GEO-009]
+    linked_test_ids: [TEST-GEO-001]
+    linked_report_fields: [geometry_uncertainty_budget_status, total_geometry_uncertainty_allowance_m]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: all_configurations
+    blocking: true
+    notes: Official sources are null.
+    kind: quantitative
+  - requirement_id: SYS-GEO-002
+    title: Nominal clearance is not a robust pass
+    category: SYS-GEO
+    description: A G2 nominal CLEARANCE_MET result must not be converted into a robust geometry pass.
+    rationale: Uncertainty is unquantified.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-003]
+    linked_test_ids: []
+    linked_report_fields: [robust_geometry_status, robust_clearance_margin_m]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: robust_geometry_status stays UNDETERMINED while the budget is incomplete.
+    kind: qualitative
+  - requirement_id: SYS-GEO-003
+    title: Geometry uncertainty source values
+    category: SYS-GEO
+    description: Manufacturing, assembly, mount, propeller, deflection, joint, sensor-pod, and cable allowances must be evidenced.
+    rationale: No CAD or assembly evidence exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-GEO-001, EV-GEO-002, EV-GEO-003, EV-GEO-004, EV-GEO-005, EV-GEO-006, EV-GEO-007, EV-GEO-008, EV-GEO-009]
+    linked_test_ids: [TEST-GEO-001]
+    linked_report_fields: [geometry_uncertainty_budget_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: all_configurations
+    blocking: true
+    notes: Do not fill guessed millimetre values.
+    kind: quantitative
+  - requirement_id: SYS-GEO-004
+    title: Uncertainty combination method must be explicit
+    category: SYS-GEO
+    description: Conservative linear sum or RSS may be used only when recorded. The analyzer must not auto-select a method.
+    rationale: Different combination methods change the total allowance.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-009]
+    linked_test_ids: []
+    linked_report_fields: [geometry_uncertainty_budget_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: Official combination_method is null.
+    kind: qualitative
+  - requirement_id: SYS-STOW-001
+    title: Maximum stowed envelope
+    category: SYS-STOW
+    description: Maximum stowed length, width, and height must be specified before a stow pose can be qualified.
+    rationale: No packing or transport limit exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-001]
+    linked_test_ids: [TEST-STOW-001]
+    linked_report_fields: [stow_requirements_status, stow_gate]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: stowed
+    blocking: true
+    notes: Envelope limits are null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-002
+    title: Minimum stowed rotor-to-leg clearance
+    category: SYS-STOW
+    description: A minimum rotor-to-leg clearance in the stowed state must be specified.
+    rationale: No hardware clearance requirement exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-002]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: stowed
+    blocking: true
+    notes: Clearance limit is null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-003
+    title: Maximum transition time
+    category: SYS-STOW
+    description: Maximum standing-to-stowed transition time must be specified if it is a requirement.
+    rationale: No actuator or mechanism timing evidence exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-003]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: s
+    applicability: transition
+    blocking: true
+    notes: Time limit is null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-004
+    title: Fold actuator torque interval
+    category: SYS-STOW
+    description: Actuator torque lower and upper bounds must be evidenced.
+    rationale: No fold actuator is selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-004]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: N*m
+    applicability: stow_mechanism
+    blocking: true
+    notes: Torque bounds are null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-005
+    title: Lock load and stiffness
+    category: SYS-STOW
+    description: Lock load capacity and stiffness must be evidenced before a flight lock is claimed.
+    rationale: No lock hardware exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-005, EV-STOW-006]
+    linked_test_ids: [TEST-STOW-002]
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: N
+    applicability: stow_mechanism
+    blocking: true
+    notes: Lock values are null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-006
+    title: Stow position repeatability
+    category: SYS-STOW
+    description: Joint or mechanism repeatability must be evidenced.
+    rationale: No hardware repeatability data.
+    verification_method: TEST
+    required_evidence_ids: [EV-STOW-007]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: rad
+    applicability: stow_mechanism
+    blocking: true
+    notes: Repeatability is null.
+    kind: quantitative
+  - requirement_id: SYS-STOW-007
+    title: Power-loss safe state
+    category: SYS-STOW
+    description: The fold mechanism must have a defined power-loss safe state.
+    rationale: No mechanism exists to inspect.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-STOW-008]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: stow_mechanism
+    blocking: true
+    notes: Safe state is null.
+    kind: qualitative
+  - requirement_id: SYS-STOW-008
+    title: Landing deployment condition
+    category: SYS-STOW
+    description: Conditions under which legs must be deployed for landing must be specified.
+    rationale: No landing-deployment hardware or procedure exists.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-STOW-009]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: landing
+    blocking: true
+    notes: Deployment condition is null.
+    kind: qualitative
+  - requirement_id: SYS-STOW-009
+    title: Flight lock verification method
+    category: SYS-STOW
+    description: A method to verify the flight lock must be specified.
+    rationale: No lock hardware.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-STOW-010]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: flight
+    blocking: true
+    notes: Verification method is null.
+    kind: qualitative
+  - requirement_id: SYS-STOW-010
+    title: Emergency recovery requirement
+    category: SYS-STOW
+    description: Emergency recovery behaviour of the fold mechanism must be specified.
+    rationale: No mechanism exists.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-STOW-011]
+    linked_test_ids: []
+    linked_report_fields: [stow_requirements_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: emergency
+    blocking: true
+    notes: Recovery requirement is null.
+    kind: qualitative
+  - requirement_id: SYS-STOW-011
+    title: analysis_stowed remains unqualified
+    category: SYS-STOW
+    description: The G2 analysis_stowed pose is UNQUALIFIED_ANALYSIS_POSE until hardware validation exists.
+    rationale: The pose only proves one analysis path can be computed.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-012, EV-STOW-012]
+    linked_test_ids: []
+    linked_report_fields: [stow_pose_evidence_status, stow_hardware_validation_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Do not claim a qualified or passing stowed pose.
+    kind: qualitative
+  - requirement_id: SYS-PROP-001
+    title: Motor mass and performance evidence
+    category: SYS-PROP
+    description: Motor mass and performance must be vendor-declared or measured before propulsion hardware is selected.
+    rationale: No motor is selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-004, EV-PROP-001]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: propulsion
+    blocking: true
+    notes: No motor evidence.
+    kind: quantitative
+  - requirement_id: SYS-PROP-002
+    title: ESC evidence
+    category: SYS-PROP
+    description: ESC mass and rating must be evidenced.
+    rationale: No ESC is selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-005, EV-PROP-002]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: propulsion
+    blocking: true
+    notes: No ESC evidence.
+    kind: quantitative
+  - requirement_id: SYS-PROP-003
+    title: Propeller and hub evidence
+    category: SYS-PROP
+    description: Propeller and hub mass and a thrust-power map must be evidenced.
+    rationale: No propeller is selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-006, EV-PROP-003]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: propulsion
+    blocking: true
+    notes: No propeller evidence.
+    kind: quantitative
+  - requirement_id: SYS-PROP-004
+    title: Propulsion bench evidence
+    category: SYS-PROP
+    description: A motor-ESC-propeller bench result is required before G1.5 planning efficiencies are replaced.
+    rationale: No bench exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-PROP-004]
+    linked_test_ids: [TEST-PROP-001]
+    linked_report_fields: [evidence_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: propulsion
+    blocking: true
+    notes: Planning FoM and efficiency are not bench data.
+    kind: qualitative
+  - requirement_id: SYS-PROP-005
+    title: Energy-mass closure is not whole-vehicle closure
+    category: SYS-PROP
+    description: A G1.5 conditional energy-mass root must not be claimed as whole-vehicle mass closure when the ledger is incomplete.
+    rationale: Incomplete part masses cannot close the vehicle.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-004]
+    linked_test_ids: []
+    linked_report_fields: [whole_vehicle_energy_mass_closure_claimed]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Official claim stays false.
+    kind: qualitative
+  - requirement_id: SYS-POWER-001
+    title: Battery pack and container evidence
+    category: SYS-POWER
+    description: Battery pack energy and container mass must be evidenced.
+    rationale: No pack is selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-008, EV-MASS-017, EV-POWER-001]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: power
+    blocking: true
+    notes: No battery evidence.
+    kind: quantitative
+  - requirement_id: SYS-POWER-002
+    title: Usable energy and bus voltage evidence
+    category: SYS-POWER
+    description: Usable energy fraction and bus voltage must be evidenced before they replace G1.5 planning values.
+    rationale: Current 22.2 V and 0.80 usable fraction are planning knobs.
+    verification_method: TEST
+    required_evidence_ids: [EV-POWER-002]
+    linked_test_ids: []
+    linked_report_fields: [evidence_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: power
+    blocking: true
+    notes: Planning electrical values are not hardware evidence.
+    kind: qualitative
+  - requirement_id: SYS-POWER-003
+    title: High-current wiring and protection
+    category: SYS-POWER
+    description: High-current wiring, connectors, and protection mass must be evidenced.
+    rationale: No harness exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-009, EV-MASS-010]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: power
+    blocking: true
+    notes: No wiring evidence.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-001
+    title: Frame and body structure
+    category: SYS-STRUCT
+    description: Frame and body mass and structural capability must be evidenced.
+    rationale: G1 body geometry is a visual placeholder.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-001]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: structure
+    blocking: true
+    notes: No frame evidence.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-002
+    title: Arm-radius structural mass coupling
+    category: SYS-STRUCT
+    description: Arm extension mass may be computed only when linear, connector, wiring, and reinforcement intervals and radii exist.
+    rationale: G2 marks R != 0.30 m as UNMODELED_ARM_EXTENSION_MASS.
+    verification_method: ANALYSIS_AND_TEST
+    required_evidence_ids: [EV-MASS-007, EV-ARM-001, EV-ARM-002, EV-ARM-003, EV-ARM-004]
+    linked_test_ids: [TEST-STRUCT-001]
+    linked_report_fields: [arm_radius_mass_coupling_status, arm_extension_mass_lower_kg, arm_extension_mass_upper_kg]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: structure
+    blocking: true
+    notes: Do not invent kilograms per metre.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-003
+    title: Six-leg structure
+    category: SYS-STRUCT
+    description: Six-leg structural mass must be evidenced.
+    rationale: G1 link masses are placeholders.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-002]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: structure
+    blocking: true
+    notes: No leg-structure evidence.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-004
+    title: Eighteen leg actuators
+    category: SYS-STRUCT
+    description: Eighteen coxa/femur/tibia actuators must be evidenced.
+    rationale: No actuators are selected.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-003]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: structure
+    blocking: true
+    notes: No actuator evidence.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-005
+    title: Folding and locking mechanism structure
+    category: SYS-STRUCT
+    description: Folding and locking mechanism mass and capability must be evidenced.
+    rationale: analysis_stowed is not a mechanism.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-016]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status, stow_hardware_validation_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: structure
+    blocking: true
+    notes: No fold-mechanism evidence.
+    kind: quantitative
+  - requirement_id: SYS-STRUCT-006
+    title: Structure freeze blocked without evidence
+    category: SYS-STRUCT
+    description: Structure freeze is blocked while mass, geometry uncertainty, stow, or arm-coupling evidence is missing.
+    rationale: Planning assumptions cannot freeze structure.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-011]
+    linked_test_ids: []
+    linked_report_fields: [readiness_gate]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: PLANNING_ASSUMPTION cannot close this gate.
+    kind: qualitative
+  - requirement_id: SYS-THERM-001
+    title: Thermal and cooling mass
+    category: SYS-THERM
+    description: Cooling hardware mass and thermal limits must be evidenced.
+    rationale: No thermal hardware exists.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-015]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: thermal
+    blocking: true
+    notes: No thermal evidence.
+    kind: quantitative
+  - requirement_id: SYS-CTRL-001
+    title: Walk and flight mode switch
+    category: SYS-CTRL
+    description: Mode-switch requirements must be specified and evidenced before control integration.
+    rationale: This gate is not a flight-control stage.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-CTRL-001]
+    linked_test_ids: []
+    linked_report_fields: [evidence_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: control
+    blocking: true
+    notes: No mode-switch evidence.
+    kind: qualitative
+  - requirement_id: SYS-CTRL-002
+    title: Flight controller selection evidence
+    category: SYS-CTRL
+    description: Flight-controller mass and identity must be evidenced.
+    rationale: No controller is selected.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-MASS-011]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: control
+    blocking: true
+    notes: Not a PX4 integration stage.
+    kind: quantitative
+  - requirement_id: SYS-CTRL-003
+    title: No PX4 or real-time control claim
+    category: SYS-CTRL
+    description: This gate must not claim PX4 integration, real-time control, or a flyable controller.
+    rationale: G3 is an analysis contract only.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-010]
+    linked_test_ids: []
+    linked_report_fields: [status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: ANALYSIS_ONLY.
+    kind: qualitative
+  - requirement_id: SYS-SENSE-001
+    title: Navigation sensors
+    category: SYS-SENSE
+    description: Navigation sensor mass and identity must be evidenced.
+    rationale: No GNSS/IMU/rangefinder hardware.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-013]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: sensing
+    blocking: true
+    notes: No navigation-sensor evidence.
+    kind: quantitative
+  - requirement_id: SYS-SENSE-002
+    title: Rescue and environment sensors
+    category: SYS-SENSE
+    description: Rescue and environment sensor mass must be evidenced. The payload is non-launching.
+    rationale: sensor_pod is a placeholder.
+    verification_method: TEST
+    required_evidence_ids: [EV-MASS-014]
+    linked_test_ids: []
+    linked_report_fields: [mass_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: kg
+    applicability: sensing
+    blocking: true
+    notes: Non-launching payload only.
+    kind: quantitative
+  - requirement_id: SYS-SENSE-003
+    title: Sensor-pod installation error in the uncertainty budget
+    category: SYS-SENSE
+    description: Sensor-pod installation error must appear in the geometry uncertainty budget.
+    rationale: Installation error is unquantified.
+    verification_method: ANALYSIS
+    required_evidence_ids: [EV-GEO-008]
+    linked_test_ids: []
+    linked_report_fields: [geometry_uncertainty_budget_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: m
+    applicability: sensing
+    blocking: true
+    notes: Official value is null.
+    kind: quantitative
+  - requirement_id: SYS-SAFE-001
+    title: Non-weaponization
+    category: SYS-SAFE
+    description: The vehicle must not include weapon, launch, strike, aim, or harm functions. Vision or perception outputs must not connect directly to any hazardous action. This contract does not design or compute real launch, self-propulsion, explosive, penetrative, destructive, ballistic, automatic-attack, or weaponized control chains.
+    rationale: Project role is disaster response, inspection, and research display.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-005]
+    linked_test_ids: [TEST-SAFE-001]
+    linked_report_fields: [status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: Design constraint, not a hardware measurement.
+    kind: qualitative
+  - requirement_id: SYS-SAFE-002
+    title: sensor_pod is non-launching
+    category: SYS-SAFE
+    description: Left and right sensor_pod units are non-launching payload placeholders.
+    rationale: G1 description forbids launch or strike function.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-006]
+    linked_test_ids: [TEST-SAFE-001]
+    linked_report_fields: [status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: all_configurations
+    blocking: true
+    notes: Non-launching payload only.
+    kind: qualitative
+  - requirement_id: SYS-SAFE-003
+    title: Operational safety remains undetermined
+    category: SYS-SAFE
+    description: Operational safety stays UNDETERMINED without hardware evidence.
+    rationale: No tested article exists.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-014]
+    linked_test_ids: []
+    linked_report_fields: [overall_system_readiness]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Do not claim an operationally safe flight result.
+    kind: qualitative
+  - requirement_id: SYS-SAFE-004
+    title: Procurement remains forbidden
+    category: SYS-SAFE
+    description: procurement_allowed must remain false while evidence is incomplete. Completing G3 does not automatically allow procurement, physical assembly, or the next stage. Procurement status may change only after safety requirements, mass/evidence ledgers, risk assessment, site rules, and formal approval are all met, and an independent official gate explicitly authorizes it.
+    rationale: No hardware data exists to support a purchase.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-013]
+    linked_test_ids: []
+    linked_report_fields: [procurement_allowed]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Do not claim a purchase-ready result.
+    kind: qualitative
+  - requirement_id: SYS-SAFE-005
+    title: ANALYSIS_ONLY banner required
+    category: SYS-SAFE
+    description: Official reports must carry ANALYSIS_ONLY and NOT_FOR_PROCUREMENT banners.
+    rationale: Results are planning contracts.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-001]
+    linked_test_ids: []
+    linked_report_fields: [status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Banner is mandatory.
+    kind: qualitative
+  - requirement_id: SYS-TRACE-001
+    title: Bidirectional traceability
+    category: SYS-TRACE
+    description: Every requirement must link to evidence, tests, report fields, and a verification method.
+    rationale: Broken references hide missing work.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-008]
+    linked_test_ids: [TEST-TRACE-001]
+    linked_report_fields: [traceability_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Coverage is not a pass criterion.
+    kind: qualitative
+  - requirement_id: SYS-TRACE-002
+    title: Blocking requirements without evidence are blockers
+    category: SYS-TRACE
+    description: A blocking requirement with no evidence must appear in blocker_ids. A coverage percentage must not hide that gap.
+    rationale: Percent complete can mask a single blocking hole.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-008]
+    linked_test_ids: []
+    linked_report_fields: [blocker_ids]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Blockers are listed explicitly.
+    kind: qualitative
+  - requirement_id: SYS-TRACE-003
+    title: Evidence levels must not auto-upgrade
+    category: SYS-TRACE
+    description: Evidence cannot move from MISSING or PLANNING_ASSUMPTION to a higher level without new metadata.
+    rationale: Auto-upgrade would falsify the ledger.
+    verification_method: INSPECTION
+    required_evidence_ids: [EV-PROC-007]
+    linked_test_ids: []
+    linked_report_fields: [evidence_ledger_status]
+    threshold: null
+    value: null
+    range_lower: null
+    range_upper: null
+    unit: null
+    applicability: analysis
+    blocking: true
+    notes: Level changes require a new record.
+    kind: qualitative
