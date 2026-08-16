@@ -3,7 +3,7 @@
 <package format="3">
   <name>arachne_hx6_analysis</name>
   <version>0.0.0</version>
-  <description>G1.5/G2 ANALYSIS_ONLY propulsion and architecture envelope calculations for Arachne-HX6.</description>
+  <description>G1.5/G2/G3 ANALYSIS_ONLY propulsion, architecture, and requirements-evidence calculations for Arachne-HX6.</description>
   <maintainer email="289059546+LiJunHao666666@users.noreply.github.com">LiJunHao666666</maintainer>
   <license>Apache-2.0</license>
 

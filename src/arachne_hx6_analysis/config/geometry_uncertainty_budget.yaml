@@ -1,0 +1,108 @@
+# Arachne-HX6 G3 geometry uncertainty budget and arm-mass coupling contract.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# No CAD tolerance, assembly, deflection, or flapping evidence exists.
+# Combination method is left null so the analyzer cannot auto-select
+# conservative linear sum or RSS. Arm linear masses are not invented.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  Geometry uncertainty sources and arm-extension mass rates are unknown.
+  Nominal CLEARANCE_MET from G2 is not a robust pass. R != 0.30 m remains
+  uncoupled until linear, connector, wiring, and reinforcement evidence exist.
+
+combination_method: null
+nominal_clearance_margin_m: null
+
+sources:
+  - source_id: manufacturing_tolerance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-001
+    notes: No manufacturing tolerance evidence.
+  - source_id: assembly_tolerance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-002
+    notes: No assembly tolerance evidence.
+  - source_id: motor_mount_position_error
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-003
+    notes: No motor-mount position evidence.
+  - source_id: propeller_radius_tolerance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-004
+    notes: No propeller radius tolerance evidence.
+  - source_id: propeller_tracking_or_flapping_allowance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-005
+    notes: No tracking or flapping allowance evidence.
+  - source_id: structural_deflection_allowance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-006
+    notes: No structural deflection evidence.
+  - source_id: leg_joint_zero_error
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-007
+    notes: No joint-zero calibration evidence.
+  - source_id: sensor_pod_installation_error
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-008
+    notes: No sensor-pod installation error evidence.
+  - source_id: cable_connector_intrusion_allowance
+    lower_m: null
+    upper_m: null
+    allowance_m: null
+    unit: m
+    evidence_id: EV-GEO-009
+    notes: No cable or connector intrusion evidence.
+
+arm_radius_mass_coupling:
+  # 0.30 m is the G1 hex_arm_span baseline, not a weighed arm.
+  baseline_radius_m: 0.30
+  candidate_radius_m: null
+  extension_length_per_arm_m: null
+  # Six arms follow the G1 hexarotor topology, not a mass measurement.
+  arm_count: 6
+  linear_mass_lower_kg_per_m: null
+  linear_mass_upper_kg_per_m: null
+  connector_mass_lower_kg: null
+  connector_mass_upper_kg: null
+  wiring_mass_lower_kg_per_m: null
+  wiring_mass_upper_kg_per_m: null
+  reinforcement_mass_lower_kg: null
+  reinforcement_mass_upper_kg: null
+  evidence_ids:
+    - EV-ARM-001
+    - EV-ARM-002
+    - EV-ARM-003
+    - EV-ARM-004
+  notes: >
+    Do not invent kilograms per metre. Extension mass stays null until
+    every required field and its evidence exist.
