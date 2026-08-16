@@ -15,6 +15,16 @@ import math
 
 import yaml
 
+from arachne_hx6_analysis.inputs import (
+    as_bool as _as_bool,
+    as_float as _as_float,
+    as_int as _as_int,
+    as_list as _as_list,
+    as_mapping as _as_mapping,
+    as_str as _as_str,
+    optional_str as _optional_str,
+    require_key as _require_key,
+)
 from arachne_hx6_analysis.model import (
     GATE_CONDITIONAL_CANDIDATE,
     GATE_REJECTED_FOR_CURRENT_BASELINE,
@@ -261,71 +271,6 @@ def _parse_analysis_config(raw: Any) -> AnalysisConfig:
         uncertainty_cases=_parse_uncertainty_cases(uncertainty_raw),
         raw=root,
     )
-
-
-def _require_key(mapping: Mapping[str, Any], key: str, path: str = '') -> Any:
-    try:
-        return mapping[key]
-    except KeyError as exc:
-        prefix = f'{path}.' if path else ''
-        raise InvalidInputError(f'{prefix}{key} is required') from exc
-
-
-def _as_mapping(value: Any, path: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise InvalidInputError(
-            f'{path} must be a mapping, got {type(value).__name__}'
-        )
-    return value
-
-
-def _as_list(value: Any, path: str) -> list[Any]:
-    if not isinstance(value, list):
-        raise InvalidInputError(
-            f'{path} must be a list, got {type(value).__name__}'
-        )
-    return value
-
-
-def _as_bool(value: Any, path: str) -> bool:
-    if not isinstance(value, bool):
-        raise InvalidInputError(f'{path} must be a boolean, got {value!r}')
-    return value
-
-
-def _as_str(value: Any, path: str) -> str:
-    if not isinstance(value, str):
-        raise InvalidInputError(f'{path} must be a string, got {value!r}')
-    return value
-
-
-def _optional_str(value: Any, path: str) -> str:
-    if value is None:
-        return ''
-    return _as_str(value, path).strip()
-
-
-def _as_float(value: Any, path: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise InvalidInputError(f'{path} must be a real number, got {value!r}')
-    number = float(value)
-    if not math.isfinite(number):
-        raise InvalidInputError(f'{path} must be finite, got {value!r}')
-    return number
-
-
-def _as_int(value: Any, path: str) -> int:
-    if isinstance(value, bool):
-        raise InvalidInputError(f'{path} must be an integer, got {value!r}')
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        if not math.isfinite(value) or value != int(value):
-            raise InvalidInputError(
-                f'{path} must be an integer without truncation, got {value!r}'
-            )
-        return int(value)
-    raise InvalidInputError(f'{path} must be an integer, got {value!r}')
 
 
 def _parse_propellers_inch(raw_values: list[Any]) -> tuple[float, ...]:

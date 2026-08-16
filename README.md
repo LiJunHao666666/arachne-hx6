@@ -19,6 +19,17 @@ source install/setup.bash
 ros2 run arachne_hx6_analysis propulsion_report --output-dir /tmp/arachne_g1_5_report
 ```
 
+## G2 参数化整机架构包络（ANALYSIS_ONLY）
+
+离线几何候选矩阵、站立到分析姿态的离散扫掠、以及与 G1.5 能量—质量闭合的联合门控见 `docs/G2_ARCHITECTURE_ENVELOPE.md`。结果标记为 **ANALYSIS_ONLY / NOT_FOR_PROCUREMENT**。G2 不是飞行控制阶段。名义几何通过不代表稳健几何通过；条件能量闭合不代表整机质量闭合；当前分析姿态不是已验证收拢姿态。质量账本、收拢需求均为 `INCOMPLETE`，稳健几何与整机架构可行性保持 `UNDETERMINED`，不允许采购。本阶段不修改 G1 URDF。
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/arachne_hx6_ws
+source install/setup.bash
+ros2 run arachne_hx6_analysis architecture_report --output-dir /tmp/arachne_g2_report
+```
+
 ## 工作区路径
 
 以下命令默认从工作区根目录执行。示例使用 `~/arachne_hx6_ws`，你可以把工作区放在任意其他路径，把该目录换成实际位置即可。
