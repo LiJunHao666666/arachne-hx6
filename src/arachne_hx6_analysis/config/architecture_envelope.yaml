@@ -1,0 +1,217 @@
+# Arachne-HX6 G2 architecture envelope inputs.
+#
+# status: ANALYSIS_ONLY
+# procurement_allowed: false
+#
+# Every numeric value below is an editable planning input. None of these
+# numbers are measured hardware data, vendor datasheets, flight-test
+# results, or a procurement specification.
+#
+# Candidate propeller diameters and motor-center radii are a planning
+# matrix only. They do not freeze G1 hex_arm_span or authorize purchase.
+
+status: ANALYSIS_ONLY
+procurement_allowed: false
+
+notes: >
+  G2 offline parameterized architecture envelope. Geometry candidates,
+  sampled standing-to-stowed clearance, and reused G1.5 energy-mass
+  closure are planning calculations. They are not a flyable result,
+  not whole-vehicle mass closure, and not a buy list.
+
+geometry:
+  rotor_count: 6
+
+propeller_diameters_in:
+  # 4.7 in is near the G1 visual rotor disk. 8 in and 10 in are intermediate
+  # planning candidates between the G1.5 4.7 / 12 / 15 in set.
+  - 4.7
+  - 8.0
+  - 10.0
+  - 12.0
+  - 15.0
+
+motor_center_radii_m:
+  # Planning motor-center radii. 0.30 m is the current G1 hex_arm_span.
+  - 0.30
+  - 0.325
+  - 0.35
+  - 0.40
+  - 0.425
+  - 0.45
+
+clearance:
+  # Planning adjacent-disk tip gap. Not a mechanical freeze.
+  min_tip_clearance_m: 0.02
+  # Planning obstacle gaps. Not certification clearances.
+  min_body_clearance_m: 0.02
+  min_sensor_pod_clearance_m: 0.02
+  min_leg_clearance_m: 0.02
+  # Null: no CAD tolerance, assembly error, deflection, or flapping evidence.
+  # Do not fill with a guessed millimetre value.
+  geometry_uncertainty_allowance_m: null
+
+leg_sweep:
+  # Inclusive linear joint-space samples from standing to analysis_stowed.
+  sample_count: 101
+
+analysis_stowed:
+  pose_kind: ANALYSIS_POSE_ONLY
+  notes: >
+    Offline architecture analysis pose only. Values are inside G1 URDF joint
+    limits. This pose only proves that one analysis path can be computed.
+    It is not a hardware-validated fold, not a flight-stow pose, not a lock
+    proof, and is not written back to standing_pose.yaml.
+  joints:
+    lf_coxa_joint: -0.40
+    lf_femur_joint: 1.10
+    lf_tibia_joint: 1.80
+    lm_coxa_joint: 0.00
+    lm_femur_joint: 1.10
+    lm_tibia_joint: 1.80
+    lr_coxa_joint: 0.40
+    lr_femur_joint: 1.10
+    lr_tibia_joint: 1.80
+    rf_coxa_joint: 0.40
+    rf_femur_joint: 1.10
+    rf_tibia_joint: 1.80
+    rm_coxa_joint: 0.00
+    rm_femur_joint: 1.10
+    rm_tibia_joint: 1.80
+    rr_coxa_joint: -0.40
+    rr_femur_joint: 1.10
+    rr_tibia_joint: 1.80
+
+stow_requirements:
+  # Unknown hardware stow limits. Do not invent millimetre or packing values.
+  maximum_total_height_m: null
+  maximum_leg_below_body_m: null
+  maximum_planform_length_m: null
+  maximum_planform_width_m: null
+
+g1_baseline:
+  # Duplicated G1 Xacro values for drift detection. Analyzer compares
+  # these to arachne_hx6.urdf.xacro and fails on mismatch.
+  hex_arm_span_m: 0.30
+  coxa_length_m: 0.060
+  femur_length_m: 0.125
+  tibia_length_m: 0.145
+  body_length_m: 0.40
+  body_width_m: 0.30
+  body_height_m: 0.10
+  sensor_pod_size_x_m: 0.080
+  sensor_pod_size_y_m: 0.035
+  sensor_pod_size_z_m: 0.040
+  sensor_pod_z_m: 0.022
+  hex_deck_offset_m: 0.008
+  hex_rotor_z_offset_m: 0.010
+  rotor_plane_z_m: 0.068
+  sensor_pod_y_m: 0.1675
+
+g1_sources:
+  xacro_relpath: urdf/arachne_hx6.urdf.xacro
+  standing_pose_relpath: config/standing_pose.yaml
+
+propulsion:
+  # Reuse G1.5 public solver. Do not copy propulsion formulas here.
+  config_relpath: propulsion_scenarios.yaml
+
+mass_ledger:
+  # Non-battery evidence ledger. G1.5 7.16 / 12 / 16 kg values are overall
+  # planning boundaries only; they are not itemized hardware masses.
+  items:
+    - id: frame_and_body
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No weighed frame. G1 body_mass is a visual placeholder only.
+    - id: six_leg_structures
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No weighed leg structure. G1 link masses are placeholders.
+    - id: eighteen_leg_actuators
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No selected or weighed coxa/femur/tibia actuators.
+    - id: six_motors
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No motor vendor data or measured mass.
+    - id: six_escs
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No ESC vendor data or measured mass.
+    - id: propellers_and_hubs
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No propeller or hub vendor data or measured mass.
+    - id: arm_extensions_and_reinforcement
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: Arm growth for larger radii is unweighed.
+    - id: power_distribution
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No PDB or power-module mass evidence.
+    - id: high_current_wiring
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No harness gauge, length, or weighed cable set.
+    - id: connectors_and_protection
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No connector, fuse, or protection-device mass.
+    - id: flight_controller
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No selected flight controller. Not a PX4 integration stage.
+    - id: companion_computer
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No selected companion computer.
+    - id: navigation_sensors
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No GNSS / IMU / rangefinder hardware mass.
+    - id: rescue_environment_sensors
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: sensor_pod is a non-launching placeholder, not a weighed payload.
+    - id: cooling
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No thermal hardware mass.
+    - id: folding_and_locking_mechanism
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: analysis_stowed is not a hardware fold mechanism.
+    - id: battery_container
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: Battery enclosure mass is unknown. Pack mass is not itemized here.
+    - id: enclosure_and_fasteners
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No fastener, cover, or enclosure mass evidence.
+    - id: contingency_allowance
+      evidence_status: MISSING
+      mass_kg: null
+      source_kind: none
+      notes: No justified contingency mass. Must not be filled with zero.

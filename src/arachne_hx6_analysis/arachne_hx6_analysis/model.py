@@ -53,6 +53,14 @@ class ConvergenceError(AnalysisError):
     """
 
 
+class GeometryConvergenceError(AnalysisError):
+    """Raised when a geometry distance cannot be certified to tolerance.
+
+    Reaching an evaluation budget without upper_bound - lower_bound <=
+    tolerance is a fail-closed error. No uncertified distance is returned.
+    """
+
+
 def inches_to_metres(diameter_inch: float) -> float:
     """Convert a propeller diameter from inches to metres."""
     _require_positive(diameter_inch, 'diameter_inch')

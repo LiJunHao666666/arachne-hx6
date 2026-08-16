@@ -19,7 +19,7 @@ setup(
     zip_safe=True,
     maintainer='LiJunHao666666',
     maintainer_email='289059546+LiJunHao666666@users.noreply.github.com',
-    description='G1.5 ANALYSIS_ONLY propulsion feasibility calculations.',
+    description='G1.5/G2 ANALYSIS_ONLY propulsion and architecture envelope calculations.',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -29,6 +29,7 @@ setup(
     entry_points={
         'console_scripts': [
             'propulsion_report = arachne_hx6_analysis.cli:main',
+            'architecture_report = arachne_hx6_analysis.architecture_cli:main',
         ],
     },
 )
