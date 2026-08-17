@@ -1,0 +1,30 @@
+# Arachne-HX6 G4-D1B offline report-triplet authorization.
+#
+# status: ANALYSIS_ONLY
+# implementation_authorization_status: GPT_AUTHORIZED
+# implementation_scope: G4_D1B_OFFLINE_REPORT_TRIPLET_ONLY
+#
+# This file authorizes only JSON/CSV/Markdown report-triplet generation
+# from an existing D1A ConfigurationSpaceResult. It does not authorize
+# CLI registration, D1A evaluator changes, procurement, hardware,
+# Gazebo, or PX4.
+#
+# D1A source evaluator remains:
+#   source_evaluator_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+#   source_evaluator_report_file_generation_allowed: false
+
+status: ANALYSIS_ONLY
+implementation_authorization_status: GPT_AUTHORIZED
+implementation_scope: G4_D1B_OFFLINE_REPORT_TRIPLET_ONLY
+report_triplet_generation_allowed: true
+cli_registration_allowed: false
+procurement_allowed: false
+hardware_assembly_allowed: false
+gazebo_allowed: false
+px4_allowed: false
+source_evaluator_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+source_evaluator_report_file_generation_allowed: false
+report_basenames:
+  json: configuration_space_report.json
+  csv: configuration_space_report.csv
+  markdown: configuration_space_report.md
