@@ -1,0 +1,108 @@
+# Arachne-HX6 G4-D1A offline in-memory configuration-space inputs.
+#
+# status: ANALYSIS_ONLY
+# implementation_authorization_status: GPT_AUTHORIZED
+# implementation_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+#
+# This file authorizes only G4-D1A offline in-memory analysis.
+# It does not change the G4-D0 historical field implementation_allowed: false.
+# procurement, hardware assembly, report files, CLI, Gazebo, and PX4 remain forbidden.
+#
+# README ~1 mm / ~2 cm values are BASELINE_REPORTED_ESTIMATE_ONLY.
+# They are not solver inputs.
+
+status: ANALYSIS_ONLY
+implementation_authorization_status: GPT_AUTHORIZED
+implementation_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+procurement_allowed: false
+hardware_assembly_allowed: false
+report_file_generation_allowed: false
+cli_registration_allowed: false
+gazebo_allowed: false
+px4_allowed: false
+
+sample_count: 101
+source_state_or_path: standing_to_analysis_stowed
+joint_unit: rad
+length_unit: m
+
+solver:
+  tolerance_m: 1.0e-9
+  tolerance_unit: m
+  approved_expectation_m: 1.0e-9
+
+analysis_disks:
+  proxy_status: ANALYSIS_PROXY_ONLY
+  reconstruction: FROZEN_G1_GEOMETRY_ONLY
+  hex_arm_span_m: 0.30
+  hex_rotor_radius_m: 0.060
+
+g4_d0_contract:
+  sha256: 199babf629d9db67791fcb75b7c4d5e253f6c253ad4762d6027ecb8e3de8450c
+
+g1_audit:
+  description_commit_sha: 3dc6f50d3852ad94c32c4fd97f0232e6b941f712
+  description_tree_sha: d342e65c08d2c94c42323f7fd4d2cdc3d96efe5d
+
+frozen_inputs:
+  src/arachne_hx6_description/config/standing_pose.yaml:
+    git_blob_sha1: 16224f915d2f54a103b4a0379ddc0e7540cd9a2e
+  src/arachne_hx6_description/urdf/arachne_hx6.urdf.xacro:
+    git_blob_sha1: e3fcd37ee513402c0354e23590dbc414be3c46c1
+  src/arachne_hx6_description/urdf/hexarotor.xacro:
+    git_blob_sha1: 5a2c56c165e6179cdb421e3ed168a55ffa194953
+  src/arachne_hx6_description/urdf/leg.xacro:
+    git_blob_sha1: a5a7e4560a4c8039fd00f68fe214f10975676647
+  src/arachne_hx6_analysis/config/architecture_envelope.yaml:
+    git_blob_sha1: 430f04b3ab9b19648279584220799251df96087a
+  src/arachne_hx6_analysis/arachne_hx6_analysis/model.py:
+    git_blob_sha1: 7e469df2b1cde8bac6f4fd5b5d2d276d4982a7e3
+  src/arachne_hx6_analysis/arachne_hx6_analysis/inputs.py:
+    git_blob_sha1: 786b128442e1d736176c309f1f75646d73b02add
+  src/arachne_hx6_analysis/arachne_hx6_analysis/geometry.py:
+    git_blob_sha1: d9e5d66b3a8ddbd6bb260e23c847319db7e7d211
+  src/arachne_hx6_analysis/arachne_hx6_analysis/geometry_primitives.py:
+    git_blob_sha1: 91665294977f67d2d3e4ad85ae9d3c1fbd9628d2
+  src/arachne_hx6_analysis/arachne_hx6_analysis/geometry_kinematics.py:
+    git_blob_sha1: 81f54b39ef9fd7c91f5bbeda91388db5469d77e5
+  src/arachne_hx6_analysis/arachne_hx6_analysis/geometry_solver.py:
+    git_blob_sha1: 47b747836bd20742616a0f08e87cc389c086ff8b
+  src/arachne_hx6_analysis/arachne_hx6_analysis/architecture_kinematics.py:
+    git_blob_sha1: 5a8d8be97a3aea50ea39f4743ac07eff09c41489
+  src/arachne_hx6_analysis/arachne_hx6_analysis/architecture_baseline.py:
+    git_blob_sha1: 5214c8f75c315ab2e8c1c5c246c148d01195238e
+  src/arachne_hx6_analysis/arachne_hx6_analysis/architecture_types.py:
+    git_blob_sha1: adcb98d371bab78511692420abb26f282b287010
+
+pair_registry:
+  include_count: 162
+  exclude_count: 420
+  include_families:
+    - id: leg_segment__analysis_disk
+      count: 108
+    - id: sensor_pod__leg_segment
+      count: 36
+    - id: leg_segment__base_link
+      count: 18
+  exclude_families:
+    - id: sensor_pod__analysis_disk
+      count: 12
+      reason_code: EXCL_SENSOR_POD_DISK_NOT_IN_G4_D0_4_1_1
+    - id: camera_link__unauthorized_targets
+      count: 27
+      reason_code: EXCL_CAMERA_NOT_AUTHORIZED
+    - id: inter_leg_segment
+      count: 135
+      reason_code: EXCL_INTER_LEG_DEFERRED_FROM_D1A
+    - id: leg_segment__hex_arm
+      count: 108
+      reason_code: EXCL_LEG_HEX_ARM_DEFERRED_FROM_D1A
+    - id: leg_segment__hex_hub
+      count: 18
+      reason_code: EXCL_LEG_HEX_HUB_DEFERRED_FROM_D1A
+    - id: leg_segment__urdf_rotor_cylinder
+      count: 108
+      reason_code: EXCL_URDF_ROTOR_CYLINDER_NOT_HARDWARE_PROP
+    - id: sensor_pod__foot
+      count: 12
+      reason_code: EXCL_POD_FOOT_NOT_A_CONTRACT_PAIR
