@@ -1,0 +1,42 @@
+# Arachne-HX6 G4-D1C offline CLI wrapper authorization.
+#
+# status: ANALYSIS_ONLY
+# implementation_authorization_status: GPT_AUTHORIZED
+# implementation_scope: G4_D1C_OFFLINE_CLI_WRAPPER_ONLY
+#
+# This file authorizes only the G4-D1C offline CLI wrapper registration
+# and orchestration. It does not authorize D1A evaluator changes, D1B
+# production-core changes, procurement, hardware assembly, Gazebo, PX4,
+# or D1D.
+#
+# D1A source evaluator remains:
+#   source_evaluator_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+#   source_evaluator_cli_registration_allowed: false
+#   source_evaluator_report_file_generation_allowed: false
+#
+# D1B source reporter remains:
+#   source_reporter_scope: G4_D1B_OFFLINE_REPORT_TRIPLET_ONLY
+#   source_reporter_cli_registration_allowed: false
+#   source_reporter_report_triplet_generation_allowed: true
+#
+# D1A/D1B original cli_registration_allowed fields stay false. This file
+# does not flip those fields to true.
+#
+# Reports may be written only to the caller-supplied --output-dir.
+# Official JSON/CSV/Markdown reports must not be git-added, committed,
+# or stored as repository artifacts.
+
+status: ANALYSIS_ONLY
+implementation_authorization_status: GPT_AUTHORIZED
+implementation_scope: G4_D1C_OFFLINE_CLI_WRAPPER_ONLY
+cli_wrapper_registration_allowed: true
+source_evaluator_scope: G4_D1A_OFFLINE_IN_MEMORY_ANALYSIS_ONLY
+source_evaluator_cli_registration_allowed: false
+source_evaluator_report_file_generation_allowed: false
+source_reporter_scope: G4_D1B_OFFLINE_REPORT_TRIPLET_ONLY
+source_reporter_cli_registration_allowed: false
+source_reporter_report_triplet_generation_allowed: true
+procurement_allowed: false
+hardware_assembly_allowed: false
+gazebo_allowed: false
+px4_allowed: false
