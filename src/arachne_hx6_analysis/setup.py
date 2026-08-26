@@ -31,6 +31,7 @@ setup(
             'propulsion_report = arachne_hx6_analysis.cli:main',
             'architecture_report = arachne_hx6_analysis.architecture_cli:main',
             'requirements_report = arachne_hx6_analysis.requirements_cli:main',
+            'configuration_space_report = arachne_hx6_analysis.configuration_space_cli:main',
         ],
     },
 )

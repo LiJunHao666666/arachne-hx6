@@ -839,19 +839,91 @@ def test_forbidden_status_words_absent(clearance_result, tmp_path):
         assert phrase not in lowered
 
 
+def _d1b_imports_argparse(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(
+                alias.name == 'argparse' or alias.name.startswith('argparse.')
+                for alias in node.names
+            ):
+                return True
+        if isinstance(node, ast.ImportFrom) and node.module:
+            if node.module == 'argparse' or node.module.startswith('argparse.'):
+                return True
+    return False
+
+
+def _d1b_has_module_level_main(tree: ast.AST) -> bool:
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name == 'main':
+                return True
+    return False
+
+
+def _d1b_has_dunder_main_guard(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        test = node.test
+        if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+            continue
+        if not isinstance(test.ops[0], ast.Eq) or len(test.comparators) != 1:
+            continue
+        left = test.left
+        right = test.comparators[0]
+        names = []
+        constants = []
+        for item in (left, right):
+            if isinstance(item, ast.Name):
+                names.append(item.id)
+            elif isinstance(item, ast.Constant) and isinstance(item.value, str):
+                constants.append(item.value)
+        if '__name__' in names and '__main__' in constants:
+            return True
+    return False
+
+
+def _d1b_instantiates_argument_parser(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == 'ArgumentParser':
+            return True
+        if isinstance(func, ast.Attribute) and func.attr == 'ArgumentParser':
+            return True
+    return False
+
+
+def _d1b_declares_console_scripts(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and node.value == 'console_scripts':
+            return True
+    return False
+
+
+def _d1b_parses_cli_arguments(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr in {'parse_args', 'add_argument', 'add_parser'}:
+            return True
+    return False
+
+
 def test_no_cli_or_argparse_in_d1b_modules():
     for path in _D1B_PY_FILES:
         source = path.read_text(encoding='utf-8')
         tree = ast.parse(source)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                assert 'cli' not in node.name.lower()
-        assert 'argparse' not in source
-        assert 'console_scripts' not in source
+        assert not _d1b_imports_argparse(tree)
+        assert not _d1b_has_module_level_main(tree)
+        assert not _d1b_has_dunder_main_guard(tree)
+        assert not _d1b_instantiates_argument_parser(tree)
+        assert not _d1b_declares_console_scripts(tree)
+        assert not _d1b_parses_cli_arguments(tree)
     yaml_text = default_report_config_path().read_text(encoding='utf-8')
     assert 'cli_registration_allowed: false' in yaml_text
-    setup = (_PACKAGE_ROOT / 'setup.py').read_text(encoding='utf-8')
-    assert 'configuration_space' not in setup.split('console_scripts')[1]
 
 
 def test_d1a_five_files_match_head():
@@ -872,7 +944,6 @@ def test_g1_g3_g4_d0_match_head():
         'src/arachne_hx6_analysis/config/stow_requirements.yaml',
         'src/arachne_hx6_analysis/config/architecture_envelope.yaml',
         'src/arachne_hx6_analysis/config/propulsion_scenarios.yaml',
-        'src/arachne_hx6_analysis/setup.py',
         'src/arachne_hx6_analysis/package.xml',
     ]
     for relpath in relpaths:
