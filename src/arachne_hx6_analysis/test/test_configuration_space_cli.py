@@ -594,15 +594,22 @@ def test_reporter_receives_result_output_dir_and_report_yaml(
 
 def test_setup_py_adds_exactly_one_approved_entry():
     workspace = _SETUP_PY.read_text(encoding='utf-8')
-    head = _git_head_bytes('src/arachne_hx6_analysis/setup.py').decode('utf-8')
+    baseline = subprocess.check_output(
+        [
+            'git',
+            'show',
+            f'{_CONTRACT_MERGE_BASELINE}:src/arachne_hx6_analysis/setup.py',
+        ],
+        cwd=_REPO_ROOT,
+    ).decode('utf-8')
     workspace_entries = _entry_strings(workspace)
-    head_entries = _entry_strings(head)
-    assert head_entries == [
+    baseline_entries = _entry_strings(baseline)
+    assert baseline_entries == [
         'propulsion_report = arachne_hx6_analysis.cli:main',
         'architecture_report = arachne_hx6_analysis.architecture_cli:main',
         'requirements_report = arachne_hx6_analysis.requirements_cli:main',
     ]
-    assert workspace_entries[:3] == head_entries
+    assert workspace_entries[:3] == baseline_entries
     assert workspace_entries[3] == _CONSOLE_SCRIPTS_ENTRY
     assert len(workspace_entries) == 4
     g4_entries = [
