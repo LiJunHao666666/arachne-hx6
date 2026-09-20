@@ -794,3 +794,112 @@ def test_real_loaders_cross_check_without_evaluate(
     assert len(calls['write']) == 1
     assert IMPLEMENTATION_SCOPE in captured.out
     assert 'procurement_allowed: false' in captured.out
+
+
+@pytest.mark.parametrize('flag, source_path', [
+    ('--configuration-space-cli-yaml', _CLI_YAML),
+    ('--configuration-space-yaml', _D1A_YAML),
+    ('--configuration-space-report-yaml', _D1B_YAML),
+])
+@pytest.mark.parametrize('problem', [
+    'encoding', 'mixed_keys', 'boolean_key', 'sequence_key',
+    'contradictory_duplicate', 'identical_duplicate', 'merge',
+    'syntax', 'unsafe_tag', 'empty', 'sequence_root',
+])
+def test_malformed_yaml_fails_before_analysis(
+    flag, source_path, problem, tmp_path, monkeypatch, capsys,
+):
+    base = source_path.read_bytes()
+    documents = {
+        'encoding': base + b'\xff',
+        'mixed_keys': base + b'\n1: unexpected\nunknown_key: unexpected\n',
+        'boolean_key': base + b'\ntrue: unexpected\n',
+        'sequence_key': base + b'\n? [first, second]\n: unexpected\n',
+        'contradictory_duplicate': (
+            base + b'\nprocurement_allowed: true\nprocurement_allowed: false\n'
+        ),
+        'identical_duplicate': base + b'\nprocurement_allowed: false\n',
+        'merge': base + b'\n<<: {procurement_allowed: true}\n',
+        'syntax': b'status: [unterminated',
+        'unsafe_tag': b'!!python/object/apply:builtins.str [unexpected]',
+        'empty': b'',
+        'sequence_root': b'[]',
+    }
+    broken = tmp_path / 'malformed.yaml'
+    broken.write_bytes(documents[problem])
+    argv = _argv(tmp_path)
+    argv[argv.index(flag) + 1] = str(broken)
+    calls = _patch_success(monkeypatch)
+
+    assert main(argv) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ''
+    assert captured.err.startswith('ERROR:')
+    assert len(captured.err.splitlines()) == 1
+    assert 'Traceback' not in captured.err
+    assert str(broken) in captured.err
+    assert calls['evaluate'] == []
+    assert calls['write'] == []
+    assert not any(path.exists() for path in _official_names(tmp_path / 'out'))
+
+
+def test_nested_duplicate_in_evaluator_config_is_rejected(
+    tmp_path, monkeypatch, capsys,
+):
+    text = _D1A_YAML.read_text(encoding='utf-8')
+    needle = '  tolerance_m: 1.0e-9'
+    assert text.count(needle) == 1
+    broken = tmp_path / 'nested-duplicate.yaml'
+    broken.write_text(
+        text.replace(needle, '  tolerance_m: 1.0\n' + needle),
+        encoding='utf-8',
+    )
+    argv = _argv(tmp_path)
+    argv[argv.index('--configuration-space-yaml') + 1] = str(broken)
+    calls = _patch_success(monkeypatch)
+
+    assert main(argv) == 1
+    assert 'duplicate configuration key' in capsys.readouterr().err
+    assert calls['evaluate'] == []
+    assert calls['write'] == []
+
+
+def test_unique_keys_with_scalar_aliases_are_supported(tmp_path):
+    text = _CLI_YAML.read_text(encoding='utf-8')
+    text = text.replace(
+        '\nprocurement_allowed: false',
+        '\nprocurement_allowed: &disabled false',
+    ).replace(
+        '\nhardware_assembly_allowed: false',
+        '\nhardware_assembly_allowed: *disabled',
+    )
+    path = tmp_path / 'scalar-alias.yaml'
+    path.write_text(text, encoding='utf-8')
+    auth = load_cli_authorization(path)
+    assert auth.procurement_allowed is False
+    assert auth.hardware_assembly_allowed is False
+
+
+@pytest.mark.parametrize('field', ['evaluator', 'reporter'])
+def test_encoding_failure_on_loader_reread_is_reported(
+    field, tmp_path, monkeypatch, capsys,
+):
+    calls = _patch_success(monkeypatch)
+
+    def unreadable(_path):
+        raise UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'invalid start byte')
+
+    target = (
+        'load_configuration_space_config' if field == 'evaluator'
+        else 'load_report_authorization'
+    )
+    monkeypatch.setattr(
+        f'arachne_hx6_analysis.configuration_space_cli.{target}', unreadable,
+    )
+    assert main(_argv(tmp_path)) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ''
+    assert captured.err.startswith('ERROR:')
+    assert len(captured.err.splitlines()) == 1
+    assert calls['evaluate'] == []
+    assert calls['write'] == []
