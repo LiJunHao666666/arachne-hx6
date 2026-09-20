@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'gazebo_flight_scenario = arachne_hx6_control.gazebo_flight_scenario:main',
         ],
     },
 )
