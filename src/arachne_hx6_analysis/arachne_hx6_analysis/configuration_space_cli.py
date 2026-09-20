@@ -100,15 +100,46 @@ def _require_equal(actual: object, expected: object, name: str) -> None:
         )
 
 
-def load_cli_authorization(path: str | Path) -> CliAuthorization:
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    """Reject ambiguous mappings without changing PyYAML's global loader."""
+
+    def construct_mapping(self, node, deep=False):
+        if not isinstance(node, yaml.MappingNode):
+            return super().construct_mapping(node, deep=deep)
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, str):
+                raise yaml.constructor.ConstructorError(
+                    'while constructing a configuration mapping', node.start_mark,
+                    'configuration keys must be strings', key_node.start_mark,
+                )
+            if key in mapping:
+                raise yaml.constructor.ConstructorError(
+                    'while constructing a configuration mapping', node.start_mark,
+                    f'duplicate configuration key: {key!r}', key_node.start_mark,
+                )
+            mapping[key] = self.construct_object(value_node, deep=deep)
+        return mapping
+
+
+def _read_config_mapping(path: str | Path, label: str) -> dict:
     config_path = Path(path)
     if not config_path.is_file():
-        raise InvalidInputError(f'cli config file not found: {config_path}')
+        raise InvalidInputError(f'{label} config file not found: {config_path}')
     try:
-        raw = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+        raw = yaml.load(
+            config_path.read_text(encoding='utf-8'), Loader=_UniqueKeySafeLoader,
+        )
+    except UnicodeDecodeError as exc:
+        raise InvalidInputError(f'{config_path} must be UTF-8 encoded') from exc
     except yaml.YAMLError as exc:
         raise InvalidInputError(f'invalid YAML in {config_path}: {exc}') from exc
-    root = as_mapping(raw, str(config_path))
+    return as_mapping(raw, str(config_path))
+
+
+def load_cli_authorization(path: str | Path) -> CliAuthorization:
+    root = _read_config_mapping(path, 'cli')
     _require_exact_keys(root, _TOP_LEVEL_KEYS, 'cli config')
     status = as_str(require_key(root, 'status', ''), 'status')
     if status != STATUS_ANALYSIS_ONLY:
@@ -256,6 +287,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(None if argv is None else list(argv))
     try:
         auth = load_cli_authorization(args.configuration_space_cli_yaml)
+        # Validate structure before the frozen loaders can overwrite duplicate
+        # keys or sort incompatible key types. They retain domain validation.
+        _read_config_mapping(args.configuration_space_yaml, 'configuration-space')
+        _read_config_mapping(args.configuration_space_report_yaml, 'report')
         d1a_config = load_configuration_space_config(args.configuration_space_yaml)
         d1b_auth = load_report_authorization(args.configuration_space_report_yaml)
         _cross_check_loaded_configs(auth, d1a_config, d1b_auth)
@@ -268,7 +303,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_dir,
             report_config_path=args.configuration_space_report_yaml,
         )
-    except (AnalysisError, OSError) as exc:
+    except (AnalysisError, OSError, UnicodeError) as exc:
         print(f'ERROR: {_format_error(exc)}', file=sys.stderr)
         return 1
     print('ANALYSIS_ONLY')
