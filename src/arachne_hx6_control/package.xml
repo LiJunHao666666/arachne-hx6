@@ -7,12 +7,16 @@
   <maintainer email="lijunhao@todo.todo">lijunhao</maintainer>
   <license>Apache-2.0</license>
 
+  <depend>ament_index_python</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>arachne_hx6_interfaces</depend>
+  <exec_depend>arachne_hx6_simulation</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

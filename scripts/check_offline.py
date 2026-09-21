@@ -17,10 +17,20 @@ import sys
 import tempfile
 
 _ANALYSIS_TESTS = 'src/arachne_hx6_analysis/test'
+_CONTROL_TESTS = [
+    'src/arachne_hx6_control/test/test_gazebo_flight_scenario.py',
+    'src/arachne_hx6_control/test/test_flight_command_guard.py',
+    'src/arachne_hx6_control/test/test_gazebo_link_loss_scenario.py',
+]
 _SUITES = {
     'cli': [f'{_ANALYSIS_TESTS}/test_configuration_space_cli.py'],
     'analysis': [_ANALYSIS_TESTS],
-    'all': [_ANALYSIS_TESTS, 'src/arachne_hx6_description/test', 'scripts/tests'],
+    'all': [
+        _ANALYSIS_TESTS,
+        'src/arachne_hx6_description/test',
+        *_CONTROL_TESTS,
+        'scripts/tests',
+    ],
 }
 
 
@@ -108,9 +118,14 @@ def create_snapshot(source: Path, destination: Path) -> str:
 def test_environment(root: Path) -> dict[str, str]:
     """Load this snapshot's Python sources, not an installed stale package."""
     env = _command_environment()
-    package_path = str(root / 'src' / 'arachne_hx6_analysis')
+    package_paths = [
+        str(root / 'src' / 'arachne_hx6_analysis'),
+        str(root / 'src' / 'arachne_hx6_control'),
+    ]
     inherited = env.get('PYTHONPATH', '')
-    env['PYTHONPATH'] = os.pathsep.join(filter(None, [package_path, inherited]))
+    env['PYTHONPATH'] = os.pathsep.join(
+        filter(None, [*package_paths, inherited]),
+    )
     env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     # External pytest options must not silently deselect tests or add paths.
     env.pop('PYTEST_ADDOPTS', None)
