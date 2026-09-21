@@ -15,6 +15,11 @@ from rclpy.node import Node
 
 from std_msgs.msg import Bool
 
+from .flight_evidence_contract import result_header
+
+SCENARIO_ID = 'gazebo-takeoff-hover-land'
+SCENARIO_VERSION = '1'
+
 
 def command_for(elapsed_s):
     """Return vertical speed and phase for the nominal flight schedule."""
@@ -31,6 +36,7 @@ def analyze(samples):
     """Evaluate nominal takeoff, hover, and landing samples."""
     if not samples:
         return {
+            **result_header(SCENARIO_ID, SCENARIO_VERSION),
             'scenario_result': 'FAIL',
             'reason': 'no_odometry',
         }
@@ -61,12 +67,7 @@ def analyze(samples):
         and horizontal <= 0.1
     )
     return {
-        'schema_version': 1,
-        'status': 'ANALYSIS_ONLY',
-        'procurement_allowed': False,
-        'flight_readiness': 'UNDETERMINED',
-        'scope': 'GAZEBO_PLANNING_MODEL',
-        'parameter_evidence': 'PLANNING_ASSUMPTION',
+        **result_header(SCENARIO_ID, SCENARIO_VERSION),
         'criteria': {
             'minimum_max_altitude_m': 0.6,
             'maximum_final_altitude_m': 0.2,

@@ -17,6 +17,10 @@ ROS bridges expose `/arachne_hx6/command/twist`,
 The automated takeoff, hover, and landing scenario passes in this simulation.
 Simulation success does not establish physical flight readiness.
 
+HEXA_EXERCISE_07.md defines the FLIGHT-SIM-04 evidence step. The
+flight_evidence executable binds the nominal and command-dropout result files
+to exact source hashes and rejects incomplete or boundary-violating evidence.
+
 For the local WSLg workstation, use `scripts/run_gazebo_gui.sh`. The wrapper
 selects Mesa D3D12 and the NVIDIA adapter because automatic selection fell back
 to CPU llvmpipe. It runs the physics server and ROS bridge independently from a

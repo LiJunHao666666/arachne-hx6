@@ -21,6 +21,7 @@ _CONTROL_TESTS = [
     'src/arachne_hx6_control/test/test_gazebo_flight_scenario.py',
     'src/arachne_hx6_control/test/test_flight_command_guard.py',
     'src/arachne_hx6_control/test/test_gazebo_link_loss_scenario.py',
+    'src/arachne_hx6_control/test/test_flight_evidence.py',
 ]
 _SUITES = {
     'cli': [f'{_ANALYSIS_TESTS}/test_configuration_space_cli.py'],
