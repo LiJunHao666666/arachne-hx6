@@ -41,7 +41,7 @@ def generate_world():
  model=generate();model=model[model.index('  <model'):model.rindex('</sdf>')]
  return '''<?xml version="1.0"?>
 <sdf version="1.10"><world name="arachne_flight">
-<physics name="1ms" type="ignored"><max_step_size>0.001</max_step_size><real_time_factor>1</real_time_factor></physics>
+<physics name="2ms" type="ignored"><max_step_size>0.002</max_step_size><real_time_factor>1</real_time_factor></physics>
 <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
 <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
 <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>

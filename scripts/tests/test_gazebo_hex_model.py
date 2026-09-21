@@ -23,3 +23,25 @@ def test_generated_world_matches_source_and_is_offline():
  assert '../models/' not in world and 'model://' not in world and 'http' not in world
  actual=(P.parents[1]/'src/arachne_hx6_simulation/worlds/flight_hex.sdf').read_text()
  assert actual==world
+
+def test_world_uses_reduced_cost_step_size():
+ root=ET.fromstring(M.generate_world())
+ assert root.findtext('world/physics/max_step_size')=='0.002'
+
+def test_lean_gui_uses_ogre1_and_keeps_core_controls():
+ config=P.parents[1]/'src/arachne_hx6_simulation/config/flight_hex_lean.config'
+ raw=config.read_text().replace('<?xml version="1.0"?>','',1)
+ root=ET.fromstring(f'<config>{raw}</config>')
+ plugins={plugin.get('filename') for plugin in root.findall('plugin')}
+ assert root.findtext("plugin[@filename='MinimalScene']/engine")=='ogre'
+ assert {'MinimalScene','InteractiveViewControl','SelectEntities','TransformControl','WorldControl','WorldStats'} <= plugins
+ assert {'Spawn','Shapes','Lights','Screenshot'}.isdisjoint(plugins)
+
+
+def test_gui_wrapper_separates_server_and_caps_render_rate():
+ wrapper=(P.parents[1]/'scripts/run_gazebo_gui.sh').read_text()
+ assert 'gz_args:="-s -r"' in wrapper
+ assert 'ARACHNE_GZ_GUI_HZ:-30' in wrapper
+ assert '--render-engine-gui ogre' in wrapper
+ assert '--gui-config "$gui_config"' in wrapper
+ assert wrapper.index('source /opt/ros/jazzy/setup.bash') < wrapper.index('set -u')

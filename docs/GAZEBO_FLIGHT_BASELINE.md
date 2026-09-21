@@ -14,5 +14,13 @@ For headless operation pass `gz_args:="-s -r"`.
 
 ROS bridges expose `/arachne_hx6/command/twist`,
 `/arachne_hx6/enable`, and `/model/arachne_flight_hex/odometry`.
-Automated takeoff, hover, and landing acceptance are still NOT_RUN. Simulation
-success will not establish physical flight readiness.
+The automated takeoff, hover, and landing scenario passes in this simulation.
+Simulation success does not establish physical flight readiness.
+
+For the local WSLg workstation, use `scripts/run_gazebo_gui.sh`. The wrapper
+selects Mesa D3D12 and the NVIDIA adapter because automatic selection fell back
+to CPU llvmpipe. It runs the physics server and ROS bridge independently from a
+30 Hz OGRE1 GUI, avoiding the OGRE2 selection-material failures seen while
+dragging entities. Set `ARACHNE_GZ_GUI_HZ` to override the visual refresh cap.
+The world uses a 2 ms physics step to reduce update overhead while retaining
+500 Hz physics.
