@@ -40,7 +40,24 @@ to the ArduPilot Hexa X definition. This is a **model/firmware convention
 conflict**, not evidence that the physical craft should be wired in the
 opposite direction. Keep the KiCad ESC_CH1–CH6 labels as logical channels.
 Do not relabel them as Ardu motors or change Gazebo yaw signs based on this
-document alone.
+document alone. The nose assumption matters: setting the study nose to +60°
+in the same model changes the position mapping and makes all six spin labels
+match. That does not establish correct yaw dynamics or authorize adopting
+that orientation for the airframe.
+
+Run the read-only comparison with an explicit nose angle:
+
+```sh
+python3 scripts/check_rotor_order.py \
+  src/arachne_hx6_simulation/models/arachne_flight_hex/model.sdf \
+  --nose-yaw-deg 0
+```
+
+Exit 1 means a spin-label conflict, 0 means labels match under the supplied
+orientation, and 2 means unsupported/malformed input. All outcomes retain
+`physical_wiring_approved=false`. The tool rejects duplicate actuator indices,
+ambiguous geometry and unsupported joint/pose transforms; it does not launch
+Gazebo, drive motors or change any model or firmware parameter.
 
 Before a physical output map can be approved: define and visibly mark the
 model nose; choose the actual firmware frame type and FC output-function

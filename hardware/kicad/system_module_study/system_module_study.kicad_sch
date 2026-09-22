@@ -3904,7 +3904,7 @@
 		)
 		(uuid "8c0cc4ad-d0f0-4cc0-b0ac-a8307d986297")
 	)
-	(text "Current Gazebo spin labels conflict with ArduPilot Hexa X at every position; see docs/ROTOR_ORDER_BRIDGE.md."
+	(text "Assuming +X nose: Gazebo spin labels conflict with Hexa X. Nose orientation must be explicit; see docs/ROTOR_ORDER_BRIDGE.md."
 		(exclude_from_sim no)
 		(at 25 239 0)
 		(effects
