@@ -44,3 +44,7 @@ Next: keep the simulation model as the control baseline; choose exact real
 modules only after the project hardware gate closes compatibility, delivered
 cost, and measured thrust/mass evidence. Then obtain each manufacturer's
 pinout and ratings, revise this sheet, and only later derive a specific PCB.
+
+The logical ESC_CH1–CH6 numbering is **not** Gazebo actuator numbering or
+ArduPilot motor/output numbering. See `docs/ROTOR_ORDER_BRIDGE.md` for the
+position-only comparison and the unresolved spin-direction conflict.

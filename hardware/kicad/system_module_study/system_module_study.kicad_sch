@@ -3892,6 +3892,29 @@
 		)
 		(uuid "2e87458c-eb06-4648-9f0b-a69ccf0b954e")
 	)
+	(text "ESC_CH1-6 ARE LOGICAL CHANNELS ONLY. Gazebo actuator index != ArduPilot Motor number != FC pad number."
+		(exclude_from_sim no)
+		(at 25 230 0)
+		(effects
+			(font
+				(size 1.5 1.5)
+				(bold yes)
+			)
+			(justify left bottom)
+		)
+		(uuid "8c0cc4ad-d0f0-4cc0-b0ac-a8307d986297")
+	)
+	(text "Current Gazebo spin labels conflict with ArduPilot Hexa X at every position; see docs/ROTOR_ORDER_BRIDGE.md."
+		(exclude_from_sim no)
+		(at 25 239 0)
+		(effects
+			(font
+				(size 1.3 1.3)
+			)
+			(justify left bottom)
+		)
+		(uuid "1ea88183-302d-4079-b801-2cd5ebaf6218")
+	)
 	(sheet_instances
 		(path "/"
 			(page "1")
