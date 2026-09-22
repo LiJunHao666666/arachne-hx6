@@ -6,9 +6,17 @@ controller has been selected.
 
 The current generator `scripts/generate_gazebo_hex.py` places six rotors at
 `30 + 60*i` degrees counterclockwise from body +X and publishes commands at
-actuator indices `0..5`. For this study only, assume body +X is the nose and
-+Y is the left side. The SDF has no visible nose marker yet, so that
-assumption must be made explicit in the model before integration.
+actuator indices `0..5`. The local simulation now marks body +X as the nose
+with an orange bar on top of the body; +Y is left and +Z is up. This is a
+visual-only marker, with no added mass, collision or change to motor mixing.
+It establishes the local simulation convention, not a physical FC orientation.
+
+When viewing from above, positive yaw about +Z turns the nose counterclockwise.
+The offline allocator's roll/pitch terms are respectively `y * thrust` and
+`-x * thrust`, consistent with upward thrust in this body frame. This geometric
+check does not validate Gazebo's yaw reaction torque or firmware integration.
+The marker appears after reloading a generated world; an already running
+Gazebo session does not automatically reload a modified SDF file.
 
 Current Gazebo geometry and plugin spin directions (viewed from above):
 

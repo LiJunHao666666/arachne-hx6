@@ -11,6 +11,8 @@ HEADER='''<?xml version="1.0"?>
       <inertial><mass>0.62</mass><inertia><ixx>0.004</ixx><iyy>0.004</iyy><izz>0.007</izz></inertia></inertial>
       <collision name="body_collision"><geometry><cylinder><radius>0.035</radius><length>0.04</length></cylinder></geometry></collision>
       <visual name="body_visual"><geometry><cylinder><radius>0.035</radius><length>0.04</length></cylinder></geometry><material><diffuse>0.12 0.22 0.35 1</diffuse></material></visual>
+      <!-- Visual-only nose: body +X forward, +Y left, +Z up. -->
+      <visual name="nose_positive_x"><pose>0.04 0 0.027 0 0 0</pose><geometry><box><size>0.05 0.012 0.008</size></box></geometry><material><diffuse>1 0.25 0.02 1</diffuse><ambient>1 0.25 0.02 1</ambient></material></visual>
     </link>
 '''
 FOOTER='''    <plugin filename="gz-sim-multicopter-control-system" name="gz::sim::systems::MulticopterVelocityControl">
