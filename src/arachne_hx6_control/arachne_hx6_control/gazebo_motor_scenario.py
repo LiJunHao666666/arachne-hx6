@@ -1,0 +1,492 @@
+"""Planning-only six-motor takeoff, hover, and landing in Gazebo."""
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import asdict, dataclass
+import json
+import math
+from pathlib import Path
+import time
+import subprocess
+
+from actuator_msgs.msg import Actuators
+from nav_msgs.msg import Odometry
+import rclpy
+from rclpy.node import Node
+
+
+@dataclass(frozen=True)
+class MotorParameters:
+    """Unmeasured values shared with the Gazebo planning model."""
+
+    mass_kg: float = 0.65
+    gravity_m_s2: float = 9.80665
+    arm_m: float = 0.12
+    motor_constant_n_per_rad_s2: float = 1.269e-5
+    moment_constant_m: float = 0.016754
+    max_thrust_per_rotor_n: float = 2.0
+    motor_time_constant_s: float = 0.0182
+    altitude_kp_n_per_m: float = 4.0
+    vertical_speed_kd_n_per_mps: float = 2.0
+    attitude_kp_nm_per_rad: float = 0.08
+    attitude_kd_nm_per_rad_s: float = 0.025
+    position_kp_mps2_per_m: float = 2.0
+    position_kd_mps2_per_mps: float = 2.0
+
+
+def clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def reference(elapsed_s: float) -> tuple[float, float, str]:
+    """Return target height, vertical speed, and phase."""
+    if elapsed_s < 0.5:
+        return 0.02, 0.0, 'SETTLE'
+    if elapsed_s < 3.5:
+        return 0.02 + 0.4 * (elapsed_s - 0.5), 0.4, 'TAKEOFF'
+    if elapsed_s < 6.0:
+        return 1.22, 0.0, 'HOVER'
+    if elapsed_s < 9.0:
+        return max(0.02, 1.22 - 0.4 * (elapsed_s - 6.0)), -0.4, 'LAND'
+    return 0.02, 0.0, 'DISARMED'
+
+
+def allocate_wrench(
+    thrust_n: float, roll_nm: float, pitch_nm: float, yaw_nm: float,
+    parameters: MotorParameters = MotorParameters(),
+) -> tuple[list[float], int]:
+    """Invert the regular-hex wrench matrix in rotor order 0..5."""
+    p = parameters
+    positions = [
+        (p.arm_m * math.cos(math.radians(30 + 60 * i)),
+         p.arm_m * math.sin(math.radians(30 + 60 * i)))
+        for i in range(6)
+    ]
+    x_norm = sum(x * x for x, _ in positions)
+    y_norm = sum(y * y for _, y in positions)
+    # Gazebo reaction torque: -turningDirection * thrust * momentConstant.
+    requested = [
+        thrust_n / 6 + y * roll_nm / y_norm - x * pitch_nm / x_norm
+        + (-1 if i % 2 == 0 else 1) * yaw_nm
+        / (6 * p.moment_constant_m)
+        for i, (x, y) in enumerate(positions)
+    ]
+    limited = [clamp(value, 0.0, p.max_thrust_per_rotor_n)
+               for value in requested]
+    saturated = sum(abs(a - b) > 1e-9
+                    for a, b in zip(requested, limited))
+    return [math.sqrt(value / p.motor_constant_n_per_rad_s2)
+            for value in limited], saturated
+
+
+def euler_from_quaternion(q) -> tuple[float, float, float]:
+    roll = math.atan2(
+        2 * (q.w * q.x + q.y * q.z),
+        1 - 2 * (q.x * q.x + q.y * q.y),
+    )
+    pitch = math.asin(clamp(2 * (q.w * q.y - q.z * q.x), -1, 1))
+    yaw = math.atan2(
+        2 * (q.w * q.z + q.x * q.y),
+        1 - 2 * (q.y * q.y + q.z * q.z),
+    )
+    return roll, pitch, yaw
+
+
+def motor_speeds(odometry: Odometry, elapsed_s: float,
+                 parameters: MotorParameters = MotorParameters(),
+                 yaw_pulse_nm: float = 0.0,
+                 target_x_m: float = 0.0,
+                 target_y_m: float = 0.0,
+                 ) -> tuple[list[float], str, int]:
+    p = parameters
+    target_z, target_vz, phase = reference(elapsed_s)
+    if phase in ('SETTLE', 'DISARMED'):
+        return [0.0] * 6, phase, 0
+    position = odometry.pose.pose.position
+    velocity = odometry.twist.twist.linear
+    roll, pitch, yaw = euler_from_quaternion(odometry.pose.pose.orientation)
+    rates = odometry.twist.twist.angular
+    desired_ax = (p.position_kp_mps2_per_m * (target_x_m - position.x)
+                  - p.position_kd_mps2_per_mps * velocity.x)
+    desired_ay = (p.position_kp_mps2_per_m * (target_y_m - position.y)
+                  - p.position_kd_mps2_per_mps * velocity.y)
+    target_roll = clamp(-desired_ay / p.gravity_m_s2, -0.15, 0.15)
+    target_pitch = clamp(desired_ax / p.gravity_m_s2, -0.15, 0.15)
+    total = p.mass_kg * p.gravity_m_s2 + p.altitude_kp_n_per_m * (target_z - position.z) + p.vertical_speed_kd_n_per_mps * (target_vz - velocity.z)
+    roll_nm = p.attitude_kp_nm_per_rad * (target_roll - roll) - p.attitude_kd_nm_per_rad_s * rates.x
+    pitch_nm = p.attitude_kp_nm_per_rad * (target_pitch - pitch) - p.attitude_kd_nm_per_rad_s * rates.y
+    yaw_nm = -p.attitude_kp_nm_per_rad * yaw - p.attitude_kd_nm_per_rad_s * rates.z
+    speeds, saturated = allocate_wrench(max(0.0, total), roll_nm, pitch_nm,
+                                         yaw_nm + yaw_pulse_nm, p)
+    return speeds, phase, saturated
+
+
+def analyze(samples: list[dict], saturated_updates: int,
+            parameters: MotorParameters = MotorParameters()) -> dict:
+    if not samples:
+        return {'scenario_result': 'FAIL', 'reason': 'no_odometry'}
+    altitudes = [s['z_m'] for s in samples]
+    horizontal = max(math.hypot(s['x_m'], s['y_m']) for s in samples)
+    metrics = {
+        'sample_count': len(samples),
+        'maximum_altitude_m': max(altitudes),
+        'final_altitude_m': altitudes[-1],
+        'maximum_horizontal_displacement_m': horizontal,
+        'saturated_motor_updates': saturated_updates,
+        'peak_tilt_deg': max(s['tilt_deg'] for s in samples),
+    }
+    phase_metrics = summarize_phases(samples)
+    hover = [s for s in samples if s['phase'] == 'HOVER' and s['elapsed_s'] >= 4.5]
+    metrics['peak_abs_yaw_deg'] = max(abs(s['yaw_deg']) for s in samples)
+    metrics['limited_motor_fraction'] = saturated_updates / (6 * len(samples))
+    metrics['hover_max_error_m'] = max((abs(s['z_m'] - 1.22) for s in hover), default=None)
+    checks = {
+        'yaw_within_10_deg': metrics['peak_abs_yaw_deg'] <= 10,
+        'limited_motor_fraction_below_5_percent': metrics['limited_motor_fraction'] <= 0.05,
+        'hover_within_20_cm': len(hover) >= 10 and metrics['hover_max_error_m'] <= 0.20,
+        'all_phases_observed': all(p in phase_metrics for p in ('SETTLE', 'TAKEOFF', 'HOVER', 'LAND', 'DISARMED')),
+    }
+    passed = (all(checks.values()) and len(samples) >= 20 and metrics['maximum_altitude_m'] >= 0.6
+              and metrics['final_altitude_m'] <= 0.15
+              and horizontal <= 0.25 and metrics['peak_tilt_deg'] <= 15)
+    return {
+        'schema': 'arachne.motor-level-gazebo/v2',
+        'acceptance_checks': checks,
+        'status': 'ANALYSIS_ONLY',
+        'procurement_allowed': False,
+        'flight_readiness': 'UNDETERMINED',
+        'scope': 'GAZEBO_PLANNING_MODEL',
+        'parameter_evidence': 'PLANNING_ASSUMPTION',
+        'controller': 'arachne-six-output-planning-controller',
+        'parameters': asdict(parameters),
+        'metrics': metrics,
+        'phase_metrics': phase_metrics,
+        'samples': samples,
+        'diagnostic_note': 'Motor speeds are commands, not measured rotor speeds',
+        'scenario_result': 'PASS' if passed else 'FAIL',
+        'limitations': [
+            'Gazebo motor values are unmeasured assumptions',
+            'The odometry feed is idealized and not a hardware estimator',
+            'A simulation pass does not establish physical flight readiness',
+        ],
+    }
+
+
+def summarize_phases(samples: list[dict]) -> dict:
+    """Count limited motors separately from updates containing any limit."""
+    result = {}
+    for phase in ('SETTLE', 'TAKEOFF', 'HOVER', 'LAND', 'DISARMED'):
+        rows = [s for s in samples if s['phase'] == phase]
+        if not rows:
+            continue
+        counts = [s['saturated_motors'] for s in rows]
+        result[phase] = {
+            'sample_count': len(rows),
+            'limited_motor_count': sum(counts),
+            'updates_with_any_limit': sum(c > 0 for c in counts),
+            'limited_motor_fraction': sum(counts) / (6 * len(rows)),
+            'peak_abs_yaw_deg': max(abs(s['yaw_deg']) for s in rows),
+            'peak_abs_yaw_rate_rad_s': max(abs(s['yaw_rate_rad_s']) for s in rows),
+            'peak_abs_requested_yaw_torque_nm': max(abs(s['requested_yaw_torque_nm']) for s in rows),
+        }
+    return result
+
+
+def check_yaw_recovery(result: dict, requested_deg: float) -> dict:
+    """Require evidence that the injected initial error existed and recovered."""
+    samples = result['samples']
+    initial = samples[0]['yaw_deg']
+    late_hover = [abs(s['yaw_deg']) for s in samples
+                  if s['phase'] == 'HOVER' and s['elapsed_s'] >= 4.5]
+    result['initial_yaw_test'] = {
+        'requested_deg': requested_deg,
+        'observed_deg': initial,
+        'late_hover_peak_abs_deg': max(late_hover) if late_hover else None,
+        'scope': 'INITIAL_HEADING_ERROR_NOT_WIND',
+    }
+    result['acceptance_checks']['initial_yaw_injection_observed'] = abs(initial - requested_deg) <= 0.5
+    result['acceptance_checks']['yaw_recovered_below_1_deg'] = bool(late_hover) and max(late_hover) <= 1.0
+    if not all(result['acceptance_checks'].values()):
+        result['scenario_result'] = 'FAIL'
+    return result
+
+
+def check_yaw_pulse(result: dict, requested_nm: float) -> dict:
+    """Acceptance for a commanded motor-torque pulse, not external wind."""
+    rows = result['samples']
+    active = [s for s in rows if s.get('injected_yaw_command_nm', 0) != 0]
+    response = [s['yaw_deg'] for s in rows if 4.0 <= s['elapsed_s'] <= 5.0]
+    recovery = [abs(s['yaw_deg']) for s in rows if 5.5 <= s['elapsed_s'] < 6.0]
+    direction = 1 if requested_nm > 0 else -1
+    peak = max((direction * y for y in response), default=0.0)
+    checks = result['acceptance_checks']
+    checks['pulse_recorded'] = (len(active) >= 10 and
+        all(abs(s['injected_yaw_command_nm'] - requested_nm) < 1e-9 for s in active))
+    checks['yaw_response_observed'] = peak >= 0.1
+    checks['post_pulse_recovery_below_1_deg'] = len(recovery) >= 10 and max(recovery) <= 1.0
+    result['yaw_pulse_test'] = {
+        'scope': 'MOTOR_COMMAND_TORQUE_PULSE_NOT_EXTERNAL_WIND',
+        'requested_nm': requested_nm, 'window_s': [4.0, 4.3],
+        'peak_signed_response_deg': peak,
+        'recovery_peak_abs_deg': max(recovery) if recovery else None,
+    }
+    if not all(checks.values()):
+        result['scenario_result'] = 'FAIL'
+    return result
+
+
+def check_position_pulse(result: dict, requested_x_m: float,
+                         requested_y_m: float) -> dict:
+    '''Check a single world-axis target pulse with zero initial heading.'''
+    if bool(requested_x_m) == bool(requested_y_m):
+        raise ValueError('exactly one position pulse axis must be nonzero')
+    rows = result['samples']
+    axis = 'x' if requested_x_m else 'y'
+    cross_axis = 'y' if axis == 'x' else 'x'
+    requested = requested_x_m if axis == 'x' else requested_y_m
+    direction = 1 if requested > 0 else -1
+    active = [s for s in rows if (s.get('requested_position_x_m', 0) != 0 or
+                                  s.get('requested_position_y_m', 0) != 0)]
+    response = [s for s in rows if 4.0 <= s['elapsed_s'] <= 5.2]
+    recovery = [s for s in rows if 5.5 <= s['elapsed_s'] < 6.0]
+    signed_peak = max((direction * s[f'{axis}_m'] for s in response), default=0.0)
+    cross_peak = max((abs(s[f'{cross_axis}_m']) for s in response), default=math.inf)
+    recovery_final = abs(recovery[-1][f'{axis}_m']) if recovery else math.inf
+    heading_peak = max((abs(s['yaw_deg']) for s in response), default=math.inf)
+    checks = result['acceptance_checks']
+    checks['position_pulse_recorded'] = (len(active) >= 20 and all(
+        abs(s.get('requested_position_x_m', 0) - requested_x_m) < 1e-9 and
+        abs(s.get('requested_position_y_m', 0) - requested_y_m) < 1e-9
+        for s in active))
+    checks['position_response_in_requested_direction'] = signed_peak >= 0.03
+    checks['cross_axis_below_5_cm'] = cross_peak <= 0.05
+    checks['position_recovered_below_8_cm'] = (len(recovery) >= 10 and
+                                                recovery_final <= 0.08)
+    checks['heading_stable_below_1_deg'] = heading_peak <= 1.0
+    result['position_pulse_test'] = {
+        'scope': 'WORLD_AXIS_TARGET_WITH_ZERO_BODY_YAW',
+        'body_frame_equivalence': 'WORLD_XY_EQUALS_BODY_XY_ONLY_AT_ZERO_YAW',
+        'axis': axis, 'requested_m': requested, 'window_s': [4.0, 4.6],
+        'peak_signed_response_m': signed_peak,
+        'peak_cross_axis_m': cross_peak,
+        'recovery_final_abs_m': recovery_final,
+        'peak_abs_heading_deg': heading_peak,
+    }
+    if not all(checks.values()):
+        result['scenario_result'] = 'FAIL'
+    return result
+
+
+@dataclass
+class FeedbackWatchdog:
+    created_s: float
+    stamp_ns: int | None = None
+    advanced_s: float | None = None
+    fault: str | None = None
+
+    def observe(self, stamp_ns: int, now_s: float) -> bool:
+        if self.fault:
+            return False
+        if self.stamp_ns is not None and stamp_ns < self.stamp_ns:
+            self.fault = 'odometry_time_reversed'
+            return False
+        if self.stamp_ns is None or stamp_ns > self.stamp_ns:
+            self.stamp_ns = stamp_ns
+            self.advanced_s = now_s
+            return True
+        return False
+
+    def check(self, now_s: float) -> str | None:
+        if self.fault is None:
+            if self.advanced_s is None and now_s - self.created_s >= 5.0:
+                self.fault = 'no_odometry'
+            elif self.advanced_s is not None and now_s - self.advanced_s >= 0.3:
+                self.fault = 'odometry_stale_or_sim_paused'
+        return self.fault
+
+
+class MotorScenario(Node):
+    def __init__(self, output: Path, initial_yaw_deg: float = 0.0,
+                 yaw_pulse_nm: float = 0.0, position_pulse_x_m: float = 0.0,
+                 position_pulse_y_m: float = 0.0):
+        super().__init__('gazebo_motor_scenario')
+        self.output = output
+        self.initial_yaw_deg = initial_yaw_deg
+        self.yaw_pulse_nm = yaw_pulse_nm
+        self.position_pulse_x_m = position_pulse_x_m
+        self.position_pulse_y_m = position_pulse_y_m
+        self.parameters = MotorParameters()
+        self.start: float | None = None
+        self.odometry: Odometry | None = None
+        self.samples: list[dict] = []
+        self.saturated_updates = 0
+        self.done = False
+        self.watchdog = FeedbackWatchdog(time.monotonic())
+        self.abort_started: float | None = None
+        self.result: dict | None = None
+        self.publisher = self.create_publisher(
+            Actuators, '/arachne_hx6/command/motor_speed', 10,
+        )
+        self.create_subscription(
+            Odometry, '/model/arachne_flight_hex/odometry',
+            self._odometry_callback, 10,
+        )
+        self.create_timer(0.02, self._step)
+
+    def _odometry_callback(self, message: Odometry) -> None:
+        stamp = message.header.stamp.sec * 1_000_000_000 + message.header.stamp.nanosec
+        if self.watchdog.observe(stamp, time.monotonic()):
+            self.odometry = message
+
+    def _step(self) -> None:
+        now = time.monotonic()
+        fault = self.watchdog.check(now)
+        if fault:
+            command = Actuators()
+            command.velocity = [0.0] * 6
+            self.publisher.publish(command)
+            if self.abort_started is None:
+                self.abort_started = now
+            if now - self.abort_started >= 0.2:
+                self._finish({
+                    'schema': 'arachne.motor-level-gazebo/v2',
+                    'status': 'ANALYSIS_ONLY', 'procurement_allowed': False,
+                    'flight_readiness': 'UNDETERMINED', 'scenario_result': 'FAIL',
+                    'abort_reason': fault, 'samples': self.samples,
+                    'protection': {'action': 'PUBLISH_ZERO_MOTOR_COMMANDS',
+                                   'feedback_timeout_s': 0.3,
+                                   'zero_publish_window_s': now - self.abort_started,
+                                   'delivery_confirmed': False},
+                })
+            return
+        if self.odometry is None:
+            return
+        if self.start is None:
+            self.start = now
+        elapsed = now - self.start
+        pulse = self.yaw_pulse_nm if 4.0 <= elapsed < 4.3 else 0.0
+        target_x = self.position_pulse_x_m if 4.0 <= elapsed < 4.6 else 0.0
+        target_y = self.position_pulse_y_m if 4.0 <= elapsed < 4.6 else 0.0
+        speeds, phase, saturated = motor_speeds(
+            self.odometry, elapsed, self.parameters, yaw_pulse_nm=pulse,
+            target_x_m=target_x, target_y_m=target_y,
+        )
+        self.saturated_updates += saturated
+        command = Actuators()
+        command.velocity = speeds
+        self.publisher.publish(command)
+        pos = self.odometry.pose.pose.position
+        roll, pitch, yaw = euler_from_quaternion(
+            self.odometry.pose.pose.orientation,
+        )
+        self.samples.append({
+            'elapsed_s': elapsed, 'phase': phase,
+            'x_m': pos.x, 'y_m': pos.y, 'z_m': pos.z,
+            'tilt_deg': math.degrees(math.hypot(roll, pitch)),
+            'yaw_deg': math.degrees(yaw),
+            'injected_yaw_command_nm': pulse,
+            'requested_position_x_m': target_x,
+            'requested_position_y_m': target_y,
+            'yaw_rate_rad_s': self.odometry.twist.twist.angular.z,
+            'requested_yaw_torque_nm': (
+                -self.parameters.attitude_kp_nm_per_rad * yaw
+                -self.parameters.attitude_kd_nm_per_rad_s * self.odometry.twist.twist.angular.z
+            ) if phase not in ('SETTLE', 'DISARMED') else 0.0,
+            'saturated_motors': saturated,
+            'commanded_motor_speed_rad_s': list(speeds),
+            'odometry_stamp_s': (self.odometry.header.stamp.sec
+                                 + self.odometry.header.stamp.nanosec * 1e-9),
+        })
+        if elapsed >= 10.5 and not self.done:
+            self.done = True
+            result = analyze(self.samples, self.saturated_updates,
+                             self.parameters)
+            if self.initial_yaw_deg:
+                result = check_yaw_recovery(result, self.initial_yaw_deg)
+            if self.yaw_pulse_nm:
+                result = check_yaw_pulse(result, self.yaw_pulse_nm)
+            if self.position_pulse_x_m or self.position_pulse_y_m:
+                result = check_position_pulse(
+                    result, self.position_pulse_x_m, self.position_pulse_y_m,
+                )
+            self._finish(result)
+
+    def _finish(self, result: dict) -> None:
+        self.done = True
+        self.result = result
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        self.output.write_text(json.dumps(result, indent=2, allow_nan=False) + '\n')
+        print(f"Gazebo motor-level scenario: {result['scenario_result']}; "
+              f"reason: {result.get('abort_reason', 'completed')}; flight: UNDETERMINED", flush=True)
+        rclpy.shutdown()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--reset-world', action='store_true',
+                        help='Reset the isolated arachne_flight simulation before running')
+    parser.add_argument('--initial-yaw-deg', type=float, default=0.0,
+                        help='Initial heading error in [-8, 8] degrees; requires --reset-world')
+    parser.add_argument('--yaw-pulse-nm', type=float, default=0.0,
+                        help='Motor yaw-command pulse at 4.0-4.3 s; max absolute 0.01 Nm')
+    parser.add_argument('--position-pulse-x-m', type=float, default=0.0,
+                        help='World +X/-X target at 4.0-4.6 s; max absolute 0.20 m')
+    parser.add_argument('--position-pulse-y-m', type=float, default=0.0,
+                        help='World +Y/-Y target at 4.0-4.6 s; max absolute 0.20 m')
+    args = parser.parse_args()
+    position_values = (args.position_pulse_x_m, args.position_pulse_y_m)
+    if any(not math.isfinite(value) or abs(value) > 0.20
+           for value in position_values):
+        parser.error('position pulses must be finite and within [-0.20, 0.20] m')
+    if all(position_values):
+        parser.error('only one position pulse axis may be nonzero')
+    if any(position_values) and (not args.reset_world or args.initial_yaw_deg or
+                                 args.yaw_pulse_nm):
+        parser.error('position pulse requires --reset-world, zero initial yaw, and zero yaw pulse')
+    if not math.isfinite(args.yaw_pulse_nm) or abs(args.yaw_pulse_nm) > 0.01:
+        parser.error('--yaw-pulse-nm must be finite and within [-0.01, 0.01]')
+    if args.yaw_pulse_nm and (not args.reset_world or args.initial_yaw_deg):
+        parser.error('--yaw-pulse-nm requires --reset-world and zero initial yaw')
+    if not math.isfinite(args.initial_yaw_deg) or abs(args.initial_yaw_deg) > 8:
+        parser.error('--initial-yaw-deg must be finite and between -8 and 8')
+    if args.initial_yaw_deg and not args.reset_world:
+        parser.error('--initial-yaw-deg requires --reset-world')
+    if args.reset_world:
+        response = subprocess.run([
+            'gz', 'service', '-s', '/world/arachne_flight/control',
+            '--reqtype', 'gz.msgs.WorldControl', '--reptype', 'gz.msgs.Boolean',
+            '--timeout', '3000', '--req', 'reset: {all: true}, pause: false',
+        ], capture_output=True, text=True, timeout=5, check=True)
+        if 'data: true' not in response.stdout:
+            raise RuntimeError('Gazebo did not acknowledge world reset')
+        time.sleep(1.0)  # Allow the spawn height to settle before subscribing.
+    if args.initial_yaw_deg:
+        half = math.radians(args.initial_yaw_deg) / 2
+        pose = ('name: "arachne_flight_hex", position: {x: 0, y: 0, z: 0.02}, '
+                f'orientation: {{x: 0, y: 0, z: {math.sin(half)}, w: {math.cos(half)}}}')
+        response = subprocess.run([
+            'gz', 'service', '-s', '/world/arachne_flight/set_pose',
+            '--reqtype', 'gz.msgs.Pose', '--reptype', 'gz.msgs.Boolean',
+            '--timeout', '3000', '--req', pose,
+        ], capture_output=True, text=True, timeout=5, check=True)
+        if 'data: true' not in response.stdout:
+            raise RuntimeError('Gazebo did not acknowledge initial yaw injection')
+    rclpy.init()
+    node = MotorScenario(
+        args.output, args.initial_yaw_deg, args.yaw_pulse_nm,
+        args.position_pulse_x_m, args.position_pulse_y_m,
+    )
+    try:
+        rclpy.spin(node)
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
+    result = node.result or {'scenario_result': 'FAIL'}
+    return 0 if result['scenario_result'] == 'PASS' else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

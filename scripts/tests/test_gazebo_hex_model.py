@@ -45,3 +45,12 @@ def test_gui_wrapper_separates_server_and_caps_render_rate():
  assert '--render-engine-gui ogre' in wrapper
  assert '--gui-config "$gui_config"' in wrapper
  assert wrapper.index('source /opt/ros/jazzy/setup.bash') < wrapper.index('set -u')
+
+
+def test_motor_level_world_preserves_six_motors_without_velocity_controller():
+ root=ET.fromstring(M.generate_motor_level_world());model=root.find("world/model[@name='arachne_flight_hex']")
+ motors=[p for p in model.findall('plugin') if 'MotorModel' in p.get('name','')]
+ assert len(motors)==6
+ assert not any('VelocityControl' in p.get('name','') for p in model.findall('plugin'))
+ assert float(model.find("link[@name='base_link']/inertial/mass").text)+sum(float(model.find(f"link[@name='rotor_{i}']/inertial/mass").text) for i in range(6))==.65
+ assert (P.parents[1]/'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf').read_text()==M.generate_motor_level_world()

@@ -1,0 +1,128 @@
+{
+  "schema": "arachne.motor-position-summary/v1",
+  "date": "2026-09-23",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "raw_samples_committed": false,
+  "reproduction_document": "../GAZEBO_MOTOR_FIRST_RUN.md",
+  "runs": {
+    "forward": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "position_pulse_recorded": true,
+        "position_response_in_requested_direction": true,
+        "cross_axis_below_5_cm": true,
+        "position_recovered_below_8_cm": true,
+        "heading_stable_below_1_deg": true
+      },
+      "position_pulse_test": {
+        "scope": "WORLD_AXIS_TARGET_WITH_ZERO_BODY_YAW",
+        "body_frame_equivalence": "WORLD_XY_EQUALS_BODY_XY_ONLY_AT_ZERO_YAW",
+        "axis": "x",
+        "requested_m": 0.15,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.0787185829428575,
+        "peak_cross_axis_m": 2.6529289400835823e-15,
+        "recovery_final_abs_m": 0.046070515140687204,
+        "peak_abs_heading_deg": 8.024372844794028e-15
+      }
+    },
+    "backward": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "position_pulse_recorded": true,
+        "position_response_in_requested_direction": true,
+        "cross_axis_below_5_cm": true,
+        "position_recovered_below_8_cm": true,
+        "heading_stable_below_1_deg": true
+      },
+      "position_pulse_test": {
+        "scope": "WORLD_AXIS_TARGET_WITH_ZERO_BODY_YAW",
+        "body_frame_equivalence": "WORLD_XY_EQUALS_BODY_XY_ONLY_AT_ZERO_YAW",
+        "axis": "x",
+        "requested_m": -0.15,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.07826915305692983,
+        "peak_cross_axis_m": 9.028625929053408e-15,
+        "recovery_final_abs_m": 0.0460194083866187,
+        "peak_abs_heading_deg": 7.178486035744001e-15
+      }
+    },
+    "left": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "position_pulse_recorded": true,
+        "position_response_in_requested_direction": true,
+        "cross_axis_below_5_cm": true,
+        "position_recovered_below_8_cm": true,
+        "heading_stable_below_1_deg": true
+      },
+      "position_pulse_test": {
+        "scope": "WORLD_AXIS_TARGET_WITH_ZERO_BODY_YAW",
+        "body_frame_equivalence": "WORLD_XY_EQUALS_BODY_XY_ONLY_AT_ZERO_YAW",
+        "axis": "y",
+        "requested_m": 0.15,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.07968690960547757,
+        "peak_cross_axis_m": 1.9004466033106022e-11,
+        "recovery_final_abs_m": 0.04239241287837465,
+        "peak_abs_heading_deg": 1.2267741128931645e-07
+      }
+    },
+    "right": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "position_pulse_recorded": true,
+        "position_response_in_requested_direction": true,
+        "cross_axis_below_5_cm": true,
+        "position_recovered_below_8_cm": true,
+        "heading_stable_below_1_deg": true
+      },
+      "position_pulse_test": {
+        "scope": "WORLD_AXIS_TARGET_WITH_ZERO_BODY_YAW",
+        "body_frame_equivalence": "WORLD_XY_EQUALS_BODY_XY_ONLY_AT_ZERO_YAW",
+        "axis": "y",
+        "requested_m": -0.15,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.07891820285703029,
+        "peak_cross_axis_m": 1.3615149173617357e-09,
+        "recovery_final_abs_m": 0.04841010147311349,
+        "peak_abs_heading_deg": 1.2859620633374098e-06
+      }
+    }
+  },
+  "limitations": [
+    "Ideal Gazebo model and odometry only",
+    "World axes equal body axes only at zero initial yaw",
+    "A simulation pass does not establish physical flight readiness"
+  ]
+}

@@ -1,0 +1,266 @@
+# 六电机 Gazebo 首轮演示与复现
+
+状态：ANALYSIS_ONLY；procurement_allowed=false；实物飞行能力未确定。
+
+## 本轮实际操作
+
+Gazebo 的 motor world 和 GUI 已在运行，但 ROS bridge 已退出。恢复 bridge 后，
+确认里程计回传且机体位于地面，再运行 gazebo_motor_scenario。
+没有通过鼠标拖动机体，没有在界面里改参数，也没有使用真实飞控。
+
+在 Ubuntu 项目终端加载环境：
+
+```bash
+cd /home/lijunhao/workspace/arachne-hx6
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+```
+
+仅在 bridge 不在运行时，在独立终端启动通信桥：
+
+```bash
+ros2 run ros_gz_bridge parameter_bridge \
+  /arachne_hx6/command/motor_speed@actuator_msgs/msg/Actuators@gz.msgs.Actuators \
+  /model/arachne_flight_hex/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry
+```
+
+本次使用的演示命令（须先确认 motor world 正在运行、模型在地面且无其他控制器）：
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario \
+  --output /tmp/arachne_motor_level_first_run.json
+```
+
+## 观看与参数说明
+
+Alt+Tab 切换到 Gazebo Sim (Ubuntu)。播放/暂停按钮控制仿真时间，并不是起飞按钮。
+本脚本使用墙钟时间，运行过程中不要暂停或拖动机体，否则本轮结果无效。
+本轮没有点击界面按钮；动作由上面的终端命令启动。
+
+脚本 reference() 设定目标：0.5 秒等待；约 3 秒上升；2.5 秒悬停；3 秒下降；
+随后发送零转速，至 10.5 秒结束。目标上升/下降速度 0.4 m/s，悬停目标 1.22 m。
+这些是目标值，不是承诺的实际轨迹。
+MotorParameters 中高度比例增益为 4.0 N/m、垂直速度阻尼为 2.0 N/(m/s)。
+本轮保持默认值，没有调参。改变这些值属于后续受控实验，不应同时修改多项。
+
+## 本轮证据和边界
+
+原始结果：evidence/motor-level-first-run-2026-09-21.json。
+526 个控制采样记录；最高 1.33061 m；结束 0.02000 m；最大水平偏移 0.01415 m；
+最大倾斜 0.03081 度。结束后独立读取里程计，仍确认处于地面。
+当前 analyze() 基本动作判据返回 PASS，但不检查悬停稳定带、下降速度或限幅比例。
+用户视觉确认另行记录，不能把脚本 PASS 当作用户已经看到了演示。
+
+输出限幅计数为 1557：这是累计单电机限幅次数，单次更新最多计六次，
+不是 1557 个独立时间点。当前日志缺少分阶段限幅、实际电机转速和偏航角记录，
+不能据此推断限幅原因，也不能认定控制器已经调稳。
+
+下一步先补充逐阶段诊断（尤其偏航角、偏航力矩和各电机限幅），再决定是否调参。
+模型仍使用未实测动力参数和理想里程计；本结果不证明真实硬件可飞。
+## Follow-up diagnostic run
+
+Added raw command samples and per-phase saturation, yaw and requested yaw torque
+without changing controller gains or allocation. Focused tests: 13 passed; build
+passed. First attempted diagnostic timed out while Gazebo was paused and produced
+no result. After explicitly resuming the world, the diagnostic completed FAIL.
+Evidence: evidence/motor-diagnostics-2026-09-21.json.
+
+The resumed run started at about 170.3 degrees yaw (world not reset after the
+previous run). During TAKEOFF/HOVER/LAND every recorded motor request was limited:
+900/900, 744/744 and 900/900 motor samples respectively. Maximum altitude remained
+0.0198 m. Requested yaw torque peaked at 0.2911 Nm. These observations identify a
+heading-control/allocation problem to investigate, not a verified root cause.
+The previous basic PASS does not establish stable yaw control. Next review must
+check Gazebo reaction-torque sign, coordinate frames, clean initial state and
+heading-aware acceptance criteria before changing gains. No gain change made.
+## Yaw sign correction and acceptance v2
+
+Root cause: allocation used rotor spin direction as body yaw torque direction.
+Gazebo uses the opposite reaction torque (-turningDirection * thrust *
+momentConstant), with ccw=+1. Source:
+https://github.com/gazebosim/gz-sim/blob/gz-sim8/src/systems/multicopter_motor_model/MulticopterMotorModel.cc
+Only the yaw allocation sign changed; gains and maximum motor thrust did not.
+Tests reconstruct reaction torque from the actual SDF rotor order for both
+positive and negative requested yaw, and reject good-height traces with bad yaw.
+Focused suite: 15 passed.
+
+Reproduction now resets this isolated world before the scenario:
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --output /tmp/arachne_motor_yaw_fixed.json
+```
+
+The flag calls /world/arachne_flight/control with reset.all=true and pause=false,
+checks the acknowledgement, and waits one second for settling. This resets the
+entire isolated simulation world, not just the vehicle. Do not run concurrent
+controllers. The script still uses wall-clock scheduling; do not pause mid-run.
+No reset is performed when the flag is omitted.
+
+Schema v2 adds required phase coverage, absolute yaw <=10 degrees, cumulative
+limited motor fraction <=5%, and hover error <=0.20 m over samples after 4.5 s.
+These are planning regression thresholds, not hardware certification criteria.
+
+Saved evidence: evidence/motor-yaw-fixed-2026-09-21.json. Result PASS:
+526 samples; peak height 1.30016 m; final height 0.019999 m;
+0 limited motor samples; peak absolute yaw 0.00000604 degrees;
+late-hover maximum altitude error 0.03333 m. The symmetric idealized environment
+explains the very small attitude errors; disturbance robustness is not tested.
+The new run also resets the initial state, so compare the evidence with that
+initial-condition change in mind. The sign unit test independently exercises
+both torque directions. User visual confirmation has not been recorded.
+## Small initial-heading recovery (2026-09-21)
+
+Added --initial-yaw-deg in [-8,8], requiring --reset-world. The Gazebo set_pose
+service sets a pure yaw quaternion at the ground position after the reset.
+This is an initial-condition experiment, not an in-flight wind/torque disturbance.
+The heading target, allocation, gains and thrust limits are unchanged.
+Acceptance additionally requires the initial sample to match the injected angle
+within 0.5 degrees and late-hover heading error to remain below 1 degree.
+Missing injection or failure to converge is tested as FAIL. Focused suite: 16 pass.
+
+User operation: keep Gazebo Sim (Ubuntu) visible. Do not pause or drag the model
+while the wall-clock scenario runs. No GUI parameter buttons are used. In the
+Ubuntu project terminal, after sourcing ROS and install/setup.bash, run:
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --initial-yaw-deg 5 --output /tmp/arachne_yaw_plus5.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --initial-yaw-deg -5 --output /tmp/arachne_yaw_minus5.json
+```
+
+Run these sequentially, after the previous process exits. The changed parameter
+is only the starting heading. Positive/negative angles exercise opposite heading
+errors; neither is a physical flight-controller mounting instruction.
+
+Both live Gazebo runs PASS; injection observed as +5/-5 degrees. Late-hover peak
+absolute heading error: 0.01313 / 0.01292 degrees. Limited motor samples: zero in
+both runs. Maximum late-hover altitude error: 0.03548 / 0.03480 m. Final altitude
+about 0.02000 m in both runs. Evidence files:
+- evidence/motor-yaw-plus5-2026-09-21.json
+- evidence/motor-yaw-minus5-2026-09-21.json
+
+These are two deterministic nominal-model runs, not a robustness or hardware
+qualification campaign. In-flight disturbance, sensor noise, stale feedback and
+unexpected interruption remain unverified. User visual confirmation is separate.
+## Feedback / pause protection
+
+Added a monotonic-time watchdog. No first feedback for 5 seconds aborts; no
+advance of the odometry timestamp for 0.3 seconds aborts; a backwards timestamp
+also aborts. Duplicate timestamps do not feed the watchdog. Failures latch and
+cannot be cleared by later feedback. On abort the node publishes six zero motor
+commands for at least 0.2 seconds, saves FAIL with abort_reason, then exits.
+The process result now uses the current in-memory outcome, not an old result file.
+This protects the simulation exercise only: zeroing motors in airborne hardware
+is not a landing failsafe. If the command transport itself fails, delivery is not
+guaranteed. Forced process termination and real hardware behavior are not covered.
+
+Focused tests: 17 passed. Live fault injection: pause the world while the exercise
+is active using the Gazebo control service (same effect as clicking Pause):
+
+```bash
+gz service -s /world/arachne_flight/control --reqtype gz.msgs.WorldControl \
+  --reptype gz.msgs.Boolean --timeout 3000 --req 'pause: true'
+```
+
+Expected result: FAIL / odometry_stale_or_sim_paused, not a completed-flight PASS.
+The model remains frozen while paused. Do not just resume an airborne aborted
+scenario; reset the isolated world before another exercise. We reset and ran a
+normal exercise afterward: PASS, zero saturation, final height 0.02000 m.
+
+Evidence saved:
+- evidence/motor-pause-protection-2026-09-21.json
+- evidence/motor-pause-commands-2026-09-21.txt
+- evidence/motor-watchdog-nominal-2026-09-21.json
+
+An independent Gazebo command-topic capture ended with six zero velocities.
+That demonstrates the bridge delivered the stop command onto Gazebo transport,
+not measured rotor speed decay. The report's delivery_confirmed=false is retained
+because the controller itself has no delivery acknowledgement. Startup absence,
+replayed timestamps and reverse timestamps were unit-tested; only the pause/stale
+case and subsequent nominal flight were exercised in live Gazebo this round.
+## In-flight motor yaw-command pulse
+
+Added --yaw-pulse-nm, finite and limited to +/-0.01 Nm; requires --reset-world
+and cannot combine with initial heading injection. At scenario elapsed 4.0-4.3 s
+(during hover), the pulse is added to the controller's requested yaw torque
+before the existing allocation and limits. Gains, vehicle geometry and reference
+trajectory are unchanged. This tests a motor-command disturbance, not external
+wind or an independently applied physical wrench. Samples distinguish feedback
+controller requested_yaw_torque_nm from injected_yaw_command_nm.
+
+Acceptance requires at least ten nonzero pulse records matching the requested
+amplitude, a yaw response of at least 0.1 degree in the injected direction over
+4-5 s, and heading error <=1 degree throughout the sampled 5.5-6 s recovery window.
+Existing height, tilt, yaw and saturation gates still apply. Focused tests: 18 pass.
+
+With Gazebo visible, run sequentially from the sourced Ubuntu project terminal:
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --yaw-pulse-nm 0.01 --output /tmp/arachne_yaw_pulse_positive.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --yaw-pulse-nm -0.01 --output /tmp/arachne_yaw_pulse_negative.json
+```
+
+No dragging or GUI parameter editing was used. Watch takeoff, slight rotation
+while hovering, heading recovery and landing; leave simulation running throughout.
+The pulse parameter changes disturbance amplitude, not the controller gains.
+
+Both live runs PASS. Positive/negative peak signed yaw excursion: 3.393/3.462 deg;
+recovery-window peak absolute error: 0.404/0.420 deg. No motor saturation in either
+run; final heights about 0.020 m. Evidence:
+- evidence/motor-yaw-pulse-positive-2026-09-21.json
+- evidence/motor-yaw-pulse-negative-2026-09-21.json
+
+These are nominal ideal-odometry model results at one amplitude/duration only.
+They do not validate wind rejection, roll/pitch disturbances, hardware estimator
+behavior, or real-world flight readiness. Visual observation by the user remains
+separate from the numerical evidence.
+
+## 前后左右位置脉冲（2026-09-23）
+
+新增单轴位置目标脉冲，用于核对橙色机头标记和控制坐标方向。该实验限定初始
+偏航角为零，因此世界坐标与机体坐标暂时重合：+X 为向前，-X 为向后，
++Y 为向左，-Y 为向右。这一等价关系不适用于机体已经转向后的通用导航。
+
+保持 Gazebo Sim (Ubuntu) 窗口可见。播放按钮控制仿真时间；运行命令后不要
+暂停、拖动模型或同时启动另一个控制器。每条命令都会重置隔离世界，随后执行
+起飞、悬停、0.6 秒单轴目标脉冲、回中和降落：
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --position-pulse-x-m 0.15 \
+  --output /tmp/arachne_forward_position.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --position-pulse-x-m -0.15 \
+  --output /tmp/arachne_backward_position.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --position-pulse-y-m 0.15 \
+  --output /tmp/arachne_left_position.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --position-pulse-y-m -0.15 \
+  --output /tmp/arachne_right_position.json
+```
+
+每次只能设置一个方向，绝对值上限为 0.20 m；位置脉冲不能与初始偏航注入或
+偏航力矩脉冲组合。验收要求目标窗口至少记录 20 个有效请求、沿请求方向响应
+至少 3 cm、横轴偏移不超过 5 cm、5.5-6.0 秒恢复窗口末端距原点不超过
+8 cm，并且响应阶段航向误差不超过 1 度。恢复检查使用窗口末端值，因为窗口
+起点仍处在连续回程过程中。
+
+四次真实 Gazebo 运行均为 PASS。向前、向后、向左、向右的有符号峰值响应
+分别为 0.07872、0.07827、0.07969、0.07892 m；恢复窗口末端误差分别为
+0.04607、0.04602、0.04239、0.04841 m。最大横轴偏移为
+1.36e-9 m，最大绝对航向误差为 1.29e-6 度。包含模型、旋翼顺序、耦合控制
+和电机场景的聚焦测试共 47 项，全部通过。可审查的精简证据：
+
+- evidence/motor-position-summary-2026-09-23.json
+
+四份逐采样原始 JSON 保留在本地证据目录，但不提交到 Git；上面的命令可以
+重新生成原始记录，精简摘要保留验收结果、全部判据和关键指标。
+
+这些结果只验证理想模型、理想里程计和零初始偏航下的小幅平移方向。它们不
+证明转向后的机体系导航、外部风扰、传感器噪声、真实电机响应或实物飞行能力。
+脚本的数值 PASS 也不能代替用户对 Gazebo 窗口的视觉确认。

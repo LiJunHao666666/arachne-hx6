@@ -30,6 +30,7 @@ setup(
     entry_points={
         'console_scripts': [
             'gazebo_flight_scenario = arachne_hx6_control.gazebo_flight_scenario:main',
+            'gazebo_motor_scenario = arachne_hx6_control.gazebo_motor_scenario:main',
             'flight_command_guard = arachne_hx6_control.flight_command_guard:main',
             'gazebo_link_loss_scenario = arachne_hx6_control.gazebo_link_loss_scenario:main',
             'flight_evidence = arachne_hx6_control.flight_evidence:main',

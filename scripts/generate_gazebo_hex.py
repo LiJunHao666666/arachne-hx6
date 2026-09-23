@@ -2,6 +2,7 @@
 """Generate the local ANALYSIS_ONLY Gazebo hexarotor SDF."""
 from pathlib import Path
 import math
+import xml.etree.ElementTree as ET
 
 HEADER='''<?xml version="1.0"?>
 <sdf version="1.10">
@@ -52,8 +53,20 @@ def generate_world():
 '''+model+'''</world></sdf>
 '''
 
+def generate_motor_level_world():
+    """Keep the six motor plugins but remove the competing velocity controller."""
+    root = ET.fromstring(generate_world())
+    model = root.find("world/model[@name='arachne_flight_hex']")
+    controller = next(
+        plugin for plugin in model.findall('plugin')
+        if plugin.get('name') == 'gz::sim::systems::MulticopterVelocityControl'
+    )
+    model.remove(controller)
+    ET.indent(root, space='  ')
+    return ET.tostring(root, encoding='unicode', xml_declaration=True) + '\n'
 def main():
  root=Path(__file__).resolve().parents[1]
  out=root/'src/arachne_hx6_simulation/models/arachne_flight_hex/model.sdf';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(generate(),encoding='utf-8')
  (root/'src/arachne_hx6_simulation/worlds/flight_hex.sdf').write_text(generate_world(),encoding='utf-8')
+ (root/'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf').write_text(generate_motor_level_world(),encoding='utf-8')
 if __name__=='__main__':main()
