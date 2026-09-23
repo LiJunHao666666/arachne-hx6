@@ -62,6 +62,55 @@ def test_position_targets_generate_expected_body_torques():
     assert sum(-x * thrust for (x, _), thrust in zip(positions, forward_thrust)) > 0
     assert sum(y * thrust for (_, y), thrust in zip(positions, left_thrust)) < 0
 
+
+def test_target_heading_holds_rotated_body_without_extra_yaw_torque():
+    zero = SimpleNamespace(x=0.0, y=0.0, z=0.0)
+    half = math.radians(45) / 2
+    odometry = SimpleNamespace(
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            position=SimpleNamespace(x=0.0, y=0.0, z=1.22),
+            orientation=SimpleNamespace(
+                w=math.cos(half), x=0.0, y=0.0, z=math.sin(half),
+            ),
+        )),
+        twist=SimpleNamespace(twist=SimpleNamespace(linear=zero, angular=zero)),
+    )
+    held, _, _ = motor_speeds(
+        odometry, 4.0, target_yaw_rad=math.radians(45),
+    )
+    recovering, _, _ = motor_speeds(odometry, 4.0)
+    assert max(held) - min(held) < 1e-9
+    assert max(recovering) - min(recovering) > 1e-6
+
+
+def test_rotated_heading_converts_world_diagonal_to_body_forward_torque():
+    zero = SimpleNamespace(x=0.0, y=0.0, z=0.0)
+    half = math.radians(45) / 2
+    odometry = SimpleNamespace(
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            position=SimpleNamespace(x=0.0, y=0.0, z=1.22),
+            orientation=SimpleNamespace(
+                w=math.cos(half), x=0.0, y=0.0, z=math.sin(half),
+            ),
+        )),
+        twist=SimpleNamespace(twist=SimpleNamespace(linear=zero, angular=zero)),
+    )
+    p = MotorParameters()
+    speeds, _, _ = motor_speeds(
+        odometry, 4.1, target_x_m=0.15 / math.sqrt(2),
+        target_y_m=0.15 / math.sqrt(2), target_yaw_rad=math.radians(45),
+    )
+    positions = [
+        (p.arm_m * math.cos(math.radians(30 + 60 * i)),
+         p.arm_m * math.sin(math.radians(30 + 60 * i)))
+        for i in range(6)
+    ]
+    thrusts = [p.motor_constant_n_per_rad_s2 * speed**2 for speed in speeds]
+    roll_torque = sum(y * thrust for (_, y), thrust in zip(positions, thrusts))
+    pitch_torque = sum(-x * thrust for (x, _), thrust in zip(positions, thrusts))
+    assert abs(roll_torque) < 1e-10
+    assert pitch_torque > 0
+
 def test_controller_assumptions_match_gazebo_motor_model():
     p = MotorParameters()
     world = Path(__file__).resolve().parents[3] / 'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf'
@@ -230,3 +279,59 @@ def test_position_pulse_acceptance_checks_direction_cross_axis_and_recovery():
     assert wrong_direction['scenario_result'] == 'FAIL'
     assert excessive_cross_axis['scenario_result'] == 'FAIL'
     assert poor_recovery['scenario_result'] == 'FAIL'
+
+
+def test_body_forward_acceptance_projects_rotated_world_trajectory():
+    from arachne_hx6_control.gazebo_motor_scenario import check_body_forward_pulse
+
+    def evidence(heading_deg=45, request=0.15, cross=0.01,
+                 recovery=0.02, observed_heading=None):
+        heading = math.radians(heading_deg)
+        if observed_heading is None:
+            observed_heading = heading_deg
+        rows = [{
+            'elapsed_s': 0.0,
+            'x_m': 0.0,
+            'y_m': 0.0,
+            'yaw_deg': observed_heading,
+            'requested_body_forward_m': 0.0,
+        }]
+        direction = 1 if request > 0 else -1
+        for index in range(30):
+            elapsed = 4.01 + index * 0.02
+            along = direction * 0.05 * min(1.0, index / 15)
+            rows.append({
+                'elapsed_s': elapsed,
+                'x_m': along * math.cos(heading) - cross * math.sin(heading),
+                'y_m': along * math.sin(heading) + cross * math.cos(heading),
+                'yaw_deg': heading_deg + 0.2,
+                'requested_body_forward_m': request,
+            })
+        rows.extend({
+            'elapsed_s': 5.51 + index * 0.02,
+            'x_m': recovery * math.cos(heading),
+            'y_m': recovery * math.sin(heading),
+            'yaw_deg': heading_deg + 0.1,
+            'requested_body_forward_m': 0.0,
+        } for index in range(12))
+        return {
+            'samples': rows,
+            'acceptance_checks': {'base': True},
+            'scenario_result': 'PASS',
+        }
+
+    for heading_deg in (-45, 45):
+        for request in (-0.15, 0.15):
+            result = check_body_forward_pulse(
+                evidence(heading_deg, request), request, heading_deg,
+            )
+            assert result['scenario_result'] == 'PASS'
+
+    cross_fail = check_body_forward_pulse(
+        evidence(cross=0.08), 0.15, 45,
+    )
+    heading_fail = check_body_forward_pulse(
+        evidence(observed_heading=0), 0.15, 45,
+    )
+    assert cross_fail['scenario_result'] == 'FAIL'
+    assert heading_fail['scenario_result'] == 'FAIL'

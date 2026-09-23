@@ -1,0 +1,104 @@
+{
+  "schema": "arachne.body-frame-position-summary/v1",
+  "date": "2026-09-24",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "change": "Rotate world-frame position acceleration into the current body frame before roll and pitch control",
+  "raw_samples_committed": false,
+  "reproduction_document": "../GAZEBO_MOTOR_FIRST_RUN.md",
+  "runs": {
+    "pre_fix_heading_plus_45": {
+      "scenario_result": "FAIL",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "body_heading_injection_observed": true,
+        "body_forward_pulse_recorded": true,
+        "body_forward_response_observed": true,
+        "body_cross_track_below_5_cm": false,
+        "body_forward_recovered_below_8_cm": true,
+        "body_heading_error_below_1_deg": true
+      },
+      "body_forward_pulse_test": {
+        "scope": "BODY_FORWARD_PROJECTED_INTO_WORLD_XY",
+        "requested_m": 0.15,
+        "target_heading_deg": 45.0,
+        "observed_initial_heading_deg": 45.000000000000014,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.057048800147506136,
+        "peak_cross_track_m": 0.05401989851553109,
+        "recovery_final_abs_m": 0.06575323564410024,
+        "peak_abs_heading_error_deg": 0.0075420184048127226
+      }
+    },
+    "post_fix_heading_plus_45": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "body_heading_injection_observed": true,
+        "body_forward_pulse_recorded": true,
+        "body_forward_response_observed": true,
+        "body_cross_track_below_5_cm": true,
+        "body_forward_recovered_below_8_cm": true,
+        "body_heading_error_below_1_deg": true
+      },
+      "body_forward_pulse_test": {
+        "scope": "BODY_FORWARD_PROJECTED_INTO_WORLD_XY",
+        "requested_m": 0.15,
+        "target_heading_deg": 45.0,
+        "observed_initial_heading_deg": 45.000000000000014,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.08325803810692134,
+        "peak_cross_track_m": 0.01333983807314252,
+        "recovery_final_abs_m": 0.050410611643645735,
+        "peak_abs_heading_error_deg": 0.02498038794441726
+      }
+    },
+    "post_fix_heading_minus_45": {
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "body_heading_injection_observed": true,
+        "body_forward_pulse_recorded": true,
+        "body_forward_response_observed": true,
+        "body_cross_track_below_5_cm": true,
+        "body_forward_recovered_below_8_cm": true,
+        "body_heading_error_below_1_deg": true
+      },
+      "body_forward_pulse_test": {
+        "scope": "BODY_FORWARD_PROJECTED_INTO_WORLD_XY",
+        "requested_m": 0.15,
+        "target_heading_deg": -45.0,
+        "observed_initial_heading_deg": -45.000000000000014,
+        "window_s": [
+          4.0,
+          4.6
+        ],
+        "peak_signed_response_m": 0.08363888449044712,
+        "peak_cross_track_m": 0.013580114390564599,
+        "recovery_final_abs_m": 0.051270651821154256,
+        "peak_abs_heading_error_deg": 0.02359949373695258
+      }
+    }
+  },
+  "limitations": [
+    "Ideal Gazebo model and odometry only",
+    "Only plus and minus 45 degree headings were exercised live",
+    "A simulation pass does not establish physical flight readiness"
+  ]
+}

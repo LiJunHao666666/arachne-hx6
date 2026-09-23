@@ -264,3 +264,41 @@ ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
 这些结果只验证理想模型、理想里程计和零初始偏航下的小幅平移方向。它们不
 证明转向后的机体系导航、外部风扰、传感器噪声、真实电机响应或实物飞行能力。
 脚本的数值 PASS 也不能代替用户对 Gazebo 窗口的视觉确认。
+
+## 转向后的机体前向脉冲（2026-09-24）
+
+该实验验证机头转向后，前进命令仍沿机体前方，而不是固定沿世界 +X。命令先
+重置隔离世界，把橙色机头设置到指定航向，并在整个起降过程中保持该航向。
+4.0-4.6 秒的机体前向目标会按目标航向旋转到世界 X/Y 坐标。
+
+保持 Gazebo 播放状态，不要拖动模型或同时运行其他控制器。正负 45 度实验：
+
+```bash
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --body-heading-deg 45 --body-forward-pulse-m 0.15 \
+  --output /tmp/arachne_body_forward_heading45.json
+ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
+  --body-heading-deg -45 --body-forward-pulse-m 0.15 \
+  --output /tmp/arachne_body_forward_heading_minus45.json
+```
+
+`--body-heading-deg` 是保持的机头航向，范围为 -180 到 180 度；
+`--body-forward-pulse-m` 是机体前后方向目标，绝对值上限为 0.20 m。
+该模式要求 `--reset-world`，并且不能与世界轴位置脉冲、初始偏航恢复或
+偏航力矩脉冲组合。
+
+首次 +45 度运行按预期触发 FAIL：沿机头响应 0.05705 m，但横向偏差
+0.05402 m，超过 0.05 m 上限。根因是位置控制器把世界坐标加速度直接映射为
+机体滚转和俯仰，这只在偏航角为零时成立。修复后，控制器先使用当前偏航角将
+世界加速度旋转到机体坐标，再计算滚转和俯仰目标。
+
+修复后的 +45/-45 度真实 Gazebo 运行均为 PASS。沿机头方向峰值响应分别为
+0.08326/0.08364 m；横向偏差为 0.01334/0.01358 m；恢复窗口末端误差为
+0.05041/0.05127 m；最大航向误差为 0.02498/0.02360 度。50 项聚焦测试
+全部通过。精简证据：
+
+- evidence/motor-body-frame-summary-2026-09-24.json
+
+原始逐采样 JSON 保留在本机，不提交到 Git。该结果只覆盖理想模型、理想
+里程计和正负 45 度两个航向，不证明任意航向导航、路径跟踪、外部扰动抑制或
+真实飞行能力。
