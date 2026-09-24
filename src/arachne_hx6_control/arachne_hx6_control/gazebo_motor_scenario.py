@@ -13,6 +13,7 @@ import time
 from actuator_msgs.msg import Actuators
 from nav_msgs.msg import Odometry
 import rclpy
+from ros_gz_interfaces.msg import Entity, EntityWrench
 from rclpy.node import Node
 
 
@@ -21,6 +22,9 @@ SQUARE_LEG_DURATION_S = 3.5
 SQUARE_MOVE_DURATION_S = 2.0
 SQUARE_END_S = SQUARE_START_S + 4 * SQUARE_LEG_DURATION_S
 SQUARE_HOVER_UNTIL_S = SQUARE_END_S + 0.7
+DISTURBANCE_START_S = 4.0
+DISTURBANCE_DURATION_S = 0.5
+DISTURBANCE_HOVER_UNTIL_S = 7.5
 
 
 @dataclass(frozen=True)
@@ -595,6 +599,64 @@ def check_square_path(result: dict, side_m: float,
     return result
 
 
+def check_disturbance_recovery(result: dict, force_y_n: float) -> dict:
+    """Measure the lateral response and settled position after force clears."""
+    rows = result['samples']
+    before = [s for s in rows if s['elapsed_s'] < DISTURBANCE_START_S]
+    recovery_start_s = DISTURBANCE_HOVER_UNTIL_S - 1.0
+    response_window = [
+        s for s in rows
+        if DISTURBANCE_START_S <= s['elapsed_s'] < DISTURBANCE_HOVER_UNTIL_S
+    ]
+    recovery = [
+        s for s in rows
+        if recovery_start_s <= s['elapsed_s'] < DISTURBANCE_HOVER_UNTIL_S
+    ]
+    origin_y = before[-1]['y_m'] if before else math.inf
+    direction = 1 if force_y_n > 0 else -1
+    signed_response = max(
+        (direction * (sample['y_m'] - origin_y) for sample in response_window),
+        default=-math.inf,
+    )
+    final_error = (
+        math.hypot(recovery[-1]['x_m'], recovery[-1]['y_m'])
+        if recovery else math.inf
+    )
+    final_speed = (
+        math.hypot(recovery[-1]['velocity_x_m_s'],
+                   recovery[-1]['velocity_y_m_s'])
+        if recovery else math.inf
+    )
+    applied_rows = [
+        s for s in rows if s.get('disturbance_force_y_n', 0.0) == force_y_n
+    ]
+    clear_published = bool(result.get('disturbance_clear_command_published'))
+    checks = result['acceptance_checks']
+    checks['disturbance_command_recorded'] = len(applied_rows) >= 15
+    checks['disturbance_clear_command_published'] = clear_published
+    checks['lateral_response_observed'] = signed_response >= 0.015
+    checks['disturbance_recovered_within_8_cm'] = (
+        len(recovery) >= 10 and final_error <= 0.08
+    )
+    checks['recovery_speed_below_10_cm_s'] = final_speed <= 0.10
+    result['disturbance_recovery_test'] = {
+        'scope': 'WORLD_Y_PERSISTENT_FORCE_DURING_HOVER',
+        'force_y_n': force_y_n,
+        'duration_s': DISTURBANCE_DURATION_S,
+        'start_s': result.get('disturbance_actual_start_s'),
+        'clear_command_elapsed_s': result.get('disturbance_clear_elapsed_s'),
+        'peak_signed_lateral_response_m': signed_response,
+        'recovery_final_horizontal_error_m': final_error,
+        'recovery_final_horizontal_speed_m_s': final_speed,
+        'recovery_window_s': [recovery_start_s, DISTURBANCE_HOVER_UNTIL_S],
+        'clear_command_published': clear_published,
+        'gazebo_force_clear_acknowledged': False,
+    }
+    if not all(checks.values()):
+        result['scenario_result'] = 'FAIL'
+    return result
+
+
 @dataclass
 class FeedbackWatchdog:
     created_s: float
@@ -629,7 +691,8 @@ class MotorScenario(Node):
                  position_pulse_y_m: float = 0.0,
                  body_forward_pulse_m: float = 0.0,
                  body_heading_deg: float = 0.0,
-                 square_path_side_m: float = 0.0):
+                 square_path_side_m: float = 0.0,
+                 disturbance_force_y_n: float = 0.0):
         super().__init__('gazebo_motor_scenario')
         self.output = output
         self.initial_yaw_deg = initial_yaw_deg
@@ -639,6 +702,12 @@ class MotorScenario(Node):
         self.body_forward_pulse_m = body_forward_pulse_m
         self.body_heading_deg = body_heading_deg
         self.square_path_side_m = square_path_side_m
+        self.disturbance_force_y_n = disturbance_force_y_n
+        self.disturbance_active = False
+        self.disturbance_fault: str | None = None
+        self.disturbance_started_s: float | None = None
+        self.disturbance_clear_elapsed_s: float | None = None
+        self.disturbance_clear_command_published = False
         self.parameters = MotorParameters()
         self.start: float | None = None
         self.odometry: Odometry | None = None
@@ -655,12 +724,48 @@ class MotorScenario(Node):
             Odometry, '/model/arachne_flight_hex/odometry',
             self._odometry_callback, 10,
         )
+        self.disturbance_publisher = self.create_publisher(
+            EntityWrench, '/world/arachne_flight/wrench/persistent', 10,
+        )
+        self.disturbance_clear_publisher = self.create_publisher(
+            Entity, '/world/arachne_flight/wrench/clear', 10,
+        )
         self.create_timer(0.02, self._step)
 
     def _odometry_callback(self, message: Odometry) -> None:
         stamp = message.header.stamp.sec * 1_000_000_000 + message.header.stamp.nanosec
         if self.watchdog.observe(stamp, time.monotonic()):
             self.odometry = message
+
+    def _publish_disturbance(self, force_y_n: float, elapsed_s: float) -> bool:
+        if force_y_n and not (-0.20 <= force_y_n <= 0.20):
+            self.disturbance_fault = 'disturbance_force_out_of_range'
+            return False
+        if force_y_n:
+            publisher = self.disturbance_publisher
+            if publisher.get_subscription_count() == 0:
+                self.disturbance_fault = 'disturbance_gazebo_bridge_unavailable'
+                return False
+            message = EntityWrench()
+            message.entity.name = 'arachne_flight_hex::base_link'
+            message.entity.type = Entity.LINK
+            message.wrench.force.y = force_y_n
+        else:
+            publisher = self.disturbance_clear_publisher
+            if publisher.get_subscription_count() == 0:
+                self.disturbance_fault = 'disturbance_gazebo_clear_bridge_unavailable'
+                return False
+            message = Entity()
+            message.name = 'arachne_flight_hex::base_link'
+            message.type = Entity.LINK
+        publisher.publish(message)
+        self.disturbance_active = bool(force_y_n)
+        if force_y_n:
+            self.disturbance_started_s = elapsed_s
+        else:
+            self.disturbance_clear_elapsed_s = elapsed_s
+            self.disturbance_clear_command_published = True
+        return True
 
     def _step(self) -> None:
         now = time.monotonic()
@@ -688,6 +793,19 @@ class MotorScenario(Node):
         if self.start is None:
             self.start = now
         elapsed = now - self.start
+        disturbance_force = 0.0
+        if self.disturbance_force_y_n:
+            if (self.disturbance_started_s is None and
+                    not self.disturbance_fault and
+                    elapsed >= DISTURBANCE_START_S):
+                self._publish_disturbance(self.disturbance_force_y_n, elapsed)
+            if (self.disturbance_active and
+                    self.disturbance_started_s is not None and
+                    elapsed >= self.disturbance_started_s
+                    + DISTURBANCE_DURATION_S):
+                self._publish_disturbance(0.0, elapsed)
+            if self.disturbance_active:
+                disturbance_force = self.disturbance_force_y_n
         pulse = self.yaw_pulse_nm if 4.0 <= elapsed < 4.3 else 0.0
         position_active = 4.0 <= elapsed < 4.6
         body_forward = self.body_forward_pulse_m if position_active else 0.0
@@ -706,7 +824,8 @@ class MotorScenario(Node):
                 elapsed, self.square_path_side_m,
             )
         hover_until_s = (
-            SQUARE_HOVER_UNTIL_S if self.square_path_side_m else 6.0
+            SQUARE_HOVER_UNTIL_S if self.square_path_side_m else
+            DISTURBANCE_HOVER_UNTIL_S if self.disturbance_force_y_n else 6.0
         )
         end_s = hover_until_s + 4.5
         speeds, phase, saturated = motor_speeds(
@@ -742,6 +861,7 @@ class MotorScenario(Node):
             'requested_body_forward_m': body_forward,
             'requested_path_leg': path_leg,
             'target_heading_deg': self.body_heading_deg,
+            'disturbance_force_y_n': disturbance_force,
             'yaw_rate_rad_s': self.odometry.twist.twist.angular.z,
             'requested_yaw_torque_nm': (
                 self.parameters.attitude_kp_nm_per_rad * math.atan2(
@@ -783,9 +903,25 @@ class MotorScenario(Node):
                 result = check_square_path(
                     result, self.square_path_side_m, self.body_heading_deg,
                 )
+            if self.disturbance_force_y_n:
+                result['disturbance_actual_start_s'] = self.disturbance_started_s
+                result['disturbance_clear_elapsed_s'] = self.disturbance_clear_elapsed_s
+                result['disturbance_clear_command_published'] = (
+                    self.disturbance_clear_command_published
+                )
+                result = check_disturbance_recovery(
+                    result, self.disturbance_force_y_n,
+                )
+            if self.disturbance_fault:
+                result['acceptance_checks']['disturbance_transport_ok'] = False
+                result['disturbance_transport_error'] = self.disturbance_fault
+                result['scenario_result'] = 'FAIL'
             self._finish(result)
 
     def _finish(self, result: dict) -> None:
+        if self.disturbance_active and rclpy.ok():
+            elapsed = time.monotonic() - self.start if self.start is not None else 0.0
+            self._publish_disturbance(0.0, elapsed)
         self.done = True
         self.result = result
         self.output.parent.mkdir(parents=True, exist_ok=True)
@@ -819,6 +955,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help='Held heading for body-forward or square mode; [-180, 180]')
     parser.add_argument('--square-path-side-m', type=float, default=0.0,
                         help='World +X/+Y/-X/-Y square side; within (0, 0.15] m')
+    parser.add_argument('--disturbance-y-n', type=float, default=0.0,
+                        help='Apply a bounded world-Y force pulse during hover; max absolute 0.20 N')
     args = parser.parse_args(argv)
     position_values = (args.position_pulse_x_m, args.position_pulse_y_m)
     if any(not math.isfinite(value) or abs(value) > 0.20
@@ -850,10 +988,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error('--square-path-side-m must be finite and within (0, 0.15] when used')
     if args.square_path_side_m and (
             not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
-            any(position_values) or args.body_forward_pulse_m):
+            any(position_values) or args.body_forward_pulse_m or
+            args.disturbance_y_n):
         parser.error(
             'square path requires --reset-world and cannot combine with '
             'other experiment modes'
+        )
+    if (not math.isfinite(args.disturbance_y_n) or
+            abs(args.disturbance_y_n) > 0.20):
+        parser.error('--disturbance-y-n must be finite and within [-0.20, 0.20] N')
+    if args.disturbance_y_n and (
+            not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
+            any(position_values) or args.body_forward_pulse_m or
+            args.square_path_side_m or args.body_heading_deg):
+        parser.error(
+            'disturbance pulse requires --reset-world and cannot combine '
+            'with other experiment modes'
         )
     if not math.isfinite(args.yaw_pulse_nm) or abs(args.yaw_pulse_nm) > 0.01:
         parser.error('--yaw-pulse-nm must be finite and within [-0.01, 0.01]')
@@ -897,11 +1047,14 @@ def main() -> int:
         args.output, args.initial_yaw_deg, args.yaw_pulse_nm,
         args.position_pulse_x_m, args.position_pulse_y_m,
         args.body_forward_pulse_m, args.body_heading_deg,
-        args.square_path_side_m,
+        args.square_path_side_m, args.disturbance_y_n,
     )
     try:
         rclpy.spin(node)
     finally:
+        if node.disturbance_active and rclpy.ok():
+            elapsed = time.monotonic() - node.start if node.start is not None else 0.0
+            node._publish_disturbance(0.0, elapsed)
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

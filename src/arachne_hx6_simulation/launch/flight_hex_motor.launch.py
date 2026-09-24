@@ -28,6 +28,8 @@ def generate_launch_description():
         arguments=[
             '/arachne_hx6/command/motor_speed@actuator_msgs/msg/Actuators@gz.msgs.Actuators',
             '/model/arachne_flight_hex/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+            '/world/arachne_flight/wrench/persistent@ros_gz_interfaces/msg/EntityWrench@gz.msgs.EntityWrench',
+            '/world/arachne_flight/wrench/clear@ros_gz_interfaces/msg/Entity@gz.msgs.Entity',
         ],
     )
     return LaunchDescription([

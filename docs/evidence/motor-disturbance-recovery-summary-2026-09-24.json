@@ -1,0 +1,50 @@
+{
+  "schema": "arachne.gazebo-disturbance-recovery-summary/v1",
+  "date": "2026-09-24",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --disturbance-y-n 0.20 --output /tmp/arachne_hover_disturbance_plus_y_020N_native_20260924.json",
+  "scenario_result": "PASS",
+  "raw_evidence": "motor-disturbance-recovery-2026-09-24.json",
+  "raw_evidence_sha256": "22725d6be24121765cfeabb7294fcd60bdcd3213159e120865479133ac899623",
+  "samples": 601,
+  "simulated_duration_s": 12.000075251999078,
+  "disturbance": {
+    "scope": "WORLD_Y_PERSISTENT_FORCE_DURING_HOVER",
+    "force_y_n": 0.2,
+    "duration_s": 0.5,
+    "start_s": 4.00006741100151,
+    "clear_command_elapsed_s": 4.50007068999912,
+    "peak_signed_lateral_response_m": 0.06711476006296026,
+    "recovery_final_horizontal_error_m": 0.006565093224498896,
+    "recovery_final_horizontal_speed_m_s": 0.021818332644709393,
+    "recovery_window_s": [
+      6.5,
+      7.5
+    ],
+    "clear_command_published": true,
+    "gazebo_force_clear_acknowledged": false
+  },
+  "acceptance_checks": {
+    "yaw_within_10_deg": true,
+    "limited_motor_fraction_below_5_percent": true,
+    "hover_within_20_cm": true,
+    "all_phases_observed": true,
+    "disturbance_command_recorded": true,
+    "disturbance_clear_command_published": true,
+    "lateral_response_observed": true,
+    "disturbance_recovered_within_8_cm": true,
+    "recovery_speed_below_10_cm_s": true
+  },
+  "prior_rejected_attempts": [
+    "Synchronous gz topic subprocess blocked the control callback and triggered the odometry watchdog; no valid displacement was measured.",
+    "Background gz topic subprocess timing was delayed and did not align force-on samples with the planned pulse; that run was rejected."
+  ],
+  "limitations": [
+    "Gazebo did not provide an acknowledgement for the wrench clear message; only ROS publication was observed.",
+    "One positive world-Y force amplitude and duration were evaluated in one idealized run.",
+    "Simulation mass, thrust, and ideal odometry are not hardware measurements.",
+    "No user visual confirmation is recorded."
+  ]
+}

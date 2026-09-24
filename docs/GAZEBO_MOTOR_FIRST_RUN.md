@@ -455,3 +455,27 @@ ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world \
 本轮只完成单次三航向、理想里程计、无外部扰动的仿真；尚未验证重复性、
 任意航向、噪声或真实硬件。Gazebo 图形进程在运行，但本轮尚未收到用户的
 视觉确认。下一步应先加入小幅外部横向扰动及恢复验收，继续在仿真中评估。
+
+
+## 短时侧向外力与悬停回收（2026-09-24）
+
+本实验给悬停中的机体施加一次小的世界坐标 +Y 外力，再观察偏移和回正。控制器增益、混控和轨迹不变。motor world 现在包含 Gazebo ApplyLinkWrench 系统，启动文件也把持久外力与清除话题接入 ROS；外力插件本身不预设任何力，只有实验命令才会触发。
+
+在 Gazebo Sim (Ubuntu) 窗口保持仿真播放，在 Ubuntu 项目终端加载 ROS 与工作区环境。不要暂停或拖动模型，也不要同时运行其他控制器：
+
+~~~bash
+cd /home/lijunhao/workspace/arachne-hx6
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 run arachne_hx6_control gazebo_motor_scenario \
+  --reset-world --disturbance-y-n 0.20 \
+  --output /tmp/arachne_hover_disturbance_plus_y_020N.json
+~~~
+
+--reset-world 会重置这个隔离的 Gazebo world，并由脚本自动开始起飞、悬停和降落；无需点击 GUI 中的起飞或参数按钮。仿真到 4 秒左右，脚本经 ROS-Gazebo 桥接向机体施加世界 +Y 方向 0.20 N 外力，持续 0.5 秒后发布清除命令；悬停延长到 7.5 秒，再自动下降。看模型是否向 +Y 偏移，以及外力清除后是否回到原点附近。这个小偏移在当前镜头比例下可能不明显，数值轨迹比肉眼更准确。
+
+实测 601 个控制采样，仿真时长 12 秒。外力命令记时为 4.00007 秒，清除命令发布为 4.50007 秒。轨迹显示朝施力方向的最大偏移 0.0671 m；在 6.5–7.5 秒回收窗末端，水平误差 0.00657 m、水平速度 0.0218 m/s。全部软件验收项通过。原始逐采样数据：evidence/motor-disturbance-recovery-2026-09-24.json；摘要：evidence/motor-disturbance-recovery-summary-2026-09-24.json。
+
+之前两次 CLI 发布方式的尝试均作废：同步调用阻塞控制回调并触发里程计看门狗；后台调用虽避免阻塞，但命令耗时使记录时间与实际外力窗口错位。当前实现改用 ROS 消息，不再在控制定时器中启动外部命令。
+
+证据边界：ROS 端已发布清除消息，但 Gazebo 系统没有返回“已清除”确认；回正数据支持结果与清除动作一致，却不能替代仿真端回执。此次只测了一次 +Y、0.20 N、0.5 秒的扰动。模型参数和里程计仍是仿真假设，结果不等同于实物飞行能力；飞行就绪仍为 UNDETERMINED，阶段仍为 ANALYSIS_ONLY，procurement_allowed=false。用户是否肉眼看到了本轮模型运动尚未确认。
