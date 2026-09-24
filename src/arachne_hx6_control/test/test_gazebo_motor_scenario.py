@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 
 from arachne_hx6_control.gazebo_motor_scenario import (
-    MotorParameters, allocate_wrench, motor_speeds, reference,
+    MotorParameters, allocate_wrench, motor_speeds, reference, square_waypoint,
 )
 
 
@@ -15,6 +15,22 @@ def test_reference_has_takeoff_hover_landing_and_disarm():
     assert reference(4)[2] == 'HOVER'
     assert reference(7)[2] == 'LAND'
     assert reference(10)[2] == 'DISARMED'
+
+
+def test_extended_reference_holds_hover_before_delayed_landing():
+    assert reference(8.8, 9.5)[2] == 'HOVER'
+    assert reference(10.0, 9.5)[2] == 'LAND'
+    assert reference(12.6, 9.5)[2] == 'DISARMED'
+
+
+def test_square_waypoint_visits_four_clockwise_targets_and_origin():
+    side = 0.15
+    assert square_waypoint(3.9, side) == (0.0, 0.0, 'ORIGIN')
+    assert square_waypoint(4.0, side) == (side, 0.0, 'FORWARD')
+    assert square_waypoint(5.2, side) == (side, side, 'LEFT')
+    assert square_waypoint(6.4, side) == (0.0, side, 'BACKWARD')
+    assert square_waypoint(7.6, side) == (0.0, 0.0, 'RIGHT_TO_ORIGIN')
+    assert square_waypoint(8.8, side) == (0.0, 0.0, 'ORIGIN')
 
 
 def test_hover_allocation_has_six_bounded_equal_motor_commands():
@@ -335,3 +351,45 @@ def test_body_forward_acceptance_projects_rotated_world_trajectory():
     )
     assert cross_fail['scenario_result'] == 'FAIL'
     assert heading_fail['scenario_result'] == 'FAIL'
+
+
+def test_square_path_acceptance_requires_every_commanded_waypoint():
+    from arachne_hx6_control.gazebo_motor_scenario import check_square_path
+
+    side = 0.15
+    legs = [
+        ('FORWARD', 4.0, side, 0.0),
+        ('LEFT', 5.2, side, side),
+        ('BACKWARD', 6.4, 0.0, side),
+        ('RIGHT_TO_ORIGIN', 7.6, 0.0, 0.0),
+    ]
+
+    def evidence(bad_leg=None, wrong_command=False):
+        rows = []
+        for name, start, target_x, target_y in legs:
+            for index in range(60):
+                offset = 0.10 if name == bad_leg else 0.0
+                rows.append({
+                    'elapsed_s': start + index * 0.02,
+                    'x_m': target_x + offset,
+                    'y_m': target_y,
+                    'yaw_deg': 0.2,
+                    'requested_position_x_m': target_x,
+                    'requested_position_y_m': target_y,
+                    'requested_path_leg': (
+                        'WRONG' if wrong_command and name == 'LEFT' else name
+                    ),
+                })
+        return {
+            'samples': rows,
+            'acceptance_checks': {'base': True},
+            'scenario_result': 'PASS',
+        }
+
+    assert check_square_path(evidence(), side)['scenario_result'] == 'PASS'
+    assert check_square_path(
+        evidence(bad_leg='LEFT'), side,
+    )['scenario_result'] == 'FAIL'
+    assert check_square_path(
+        evidence(wrong_command=True), side,
+    )['scenario_result'] == 'FAIL'

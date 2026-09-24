@@ -39,17 +39,32 @@ def clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
 
-def reference(elapsed_s: float) -> tuple[float, float, str]:
+def reference(elapsed_s: float, hover_until_s: float = 6.0
+              ) -> tuple[float, float, str]:
     """Return target height, vertical speed, and phase."""
     if elapsed_s < 0.5:
         return 0.02, 0.0, 'SETTLE'
     if elapsed_s < 3.5:
         return 0.02 + 0.4 * (elapsed_s - 0.5), 0.4, 'TAKEOFF'
-    if elapsed_s < 6.0:
+    if elapsed_s < hover_until_s:
         return 1.22, 0.0, 'HOVER'
-    if elapsed_s < 9.0:
-        return max(0.02, 1.22 - 0.4 * (elapsed_s - 6.0)), -0.4, 'LAND'
+    if elapsed_s < hover_until_s + 3.0:
+        return max(0.02, 1.22 - 0.4 * (elapsed_s - hover_until_s)), -0.4, 'LAND'
     return 0.02, 0.0, 'DISARMED'
+
+
+def square_waypoint(elapsed_s: float, side_m: float
+                    ) -> tuple[float, float, str]:
+    '''Return the current world-axis waypoint for a clockwise square.'''
+    if elapsed_s < 4.0 or elapsed_s >= 8.8:
+        return 0.0, 0.0, 'ORIGIN'
+    if elapsed_s < 5.2:
+        return side_m, 0.0, 'FORWARD'
+    if elapsed_s < 6.4:
+        return side_m, side_m, 'LEFT'
+    if elapsed_s < 7.6:
+        return 0.0, side_m, 'BACKWARD'
+    return 0.0, 0.0, 'RIGHT_TO_ORIGIN'
 
 
 def allocate_wrench(
@@ -99,9 +114,10 @@ def motor_speeds(odometry: Odometry, elapsed_s: float,
                  target_x_m: float = 0.0,
                  target_y_m: float = 0.0,
                  target_yaw_rad: float = 0.0,
+                 hover_until_s: float = 6.0,
                  ) -> tuple[list[float], str, int]:
     p = parameters
-    target_z, target_vz, phase = reference(elapsed_s)
+    target_z, target_vz, phase = reference(elapsed_s, hover_until_s)
     if phase in ('SETTLE', 'DISARMED'):
         return [0.0] * 6, phase, 0
     position = odometry.pose.pose.position
@@ -362,6 +378,63 @@ def check_body_forward_pulse(result: dict, requested_m: float,
     return result
 
 
+def check_square_path(result: dict, side_m: float) -> dict:
+    '''Require all four square waypoints and a stable return to origin.'''
+    legs = [
+        ('FORWARD', 4.0, 5.2, side_m, 0.0),
+        ('LEFT', 5.2, 6.4, side_m, side_m),
+        ('BACKWARD', 6.4, 7.6, 0.0, side_m),
+        ('RIGHT_TO_ORIGIN', 7.6, 8.8, 0.0, 0.0),
+    ]
+    metrics = {}
+    recorded = True
+    reached = True
+    for name, start, end, target_x, target_y in legs:
+        rows = [
+            sample for sample in result['samples']
+            if start <= sample['elapsed_s'] < end
+        ]
+        recorded = recorded and len(rows) >= 40 and all(
+            sample.get('requested_path_leg') == name and
+            abs(sample.get('requested_position_x_m', math.inf) - target_x) < 1e-9 and
+            abs(sample.get('requested_position_y_m', math.inf) - target_y) < 1e-9
+            for sample in rows
+        )
+        endpoint_error = (
+            math.hypot(rows[-1]['x_m'] - target_x,
+                       rows[-1]['y_m'] - target_y)
+            if rows else math.inf
+        )
+        metrics[name] = {
+            'target_x_m': target_x,
+            'target_y_m': target_y,
+            'endpoint_error_m': endpoint_error,
+            'sample_count': len(rows),
+        }
+        reached = reached and endpoint_error <= 0.08
+    path_rows = [
+        sample for sample in result['samples']
+        if 4.0 <= sample['elapsed_s'] < 8.8
+    ]
+    heading_peak = max(
+        (abs(sample['yaw_deg']) for sample in path_rows), default=math.inf,
+    )
+    checks = result['acceptance_checks']
+    checks['square_path_commands_recorded'] = recorded
+    checks['square_waypoints_reached_within_8_cm'] = reached
+    checks['square_path_heading_below_1_deg'] = heading_peak <= 1.0
+    result['square_path_test'] = {
+        'scope': 'WORLD_AXIS_CLOCKWISE_SQUARE_AT_ZERO_YAW',
+        'side_m': side_m,
+        'leg_duration_s': 1.2,
+        'waypoints': metrics,
+        'peak_abs_heading_deg': heading_peak,
+    }
+    if not all(checks.values()):
+        result['scenario_result'] = 'FAIL'
+    return result
+
+
 @dataclass
 class FeedbackWatchdog:
     created_s: float
@@ -395,7 +468,8 @@ class MotorScenario(Node):
                  yaw_pulse_nm: float = 0.0, position_pulse_x_m: float = 0.0,
                  position_pulse_y_m: float = 0.0,
                  body_forward_pulse_m: float = 0.0,
-                 body_heading_deg: float = 0.0):
+                 body_heading_deg: float = 0.0,
+                 square_path_side_m: float = 0.0):
         super().__init__('gazebo_motor_scenario')
         self.output = output
         self.initial_yaw_deg = initial_yaw_deg
@@ -404,6 +478,7 @@ class MotorScenario(Node):
         self.position_pulse_y_m = position_pulse_y_m
         self.body_forward_pulse_m = body_forward_pulse_m
         self.body_heading_deg = body_heading_deg
+        self.square_path_side_m = square_path_side_m
         self.parameters = MotorParameters()
         self.start: float | None = None
         self.odometry: Odometry | None = None
@@ -463,10 +538,18 @@ class MotorScenario(Node):
         target_y = (
             self.position_pulse_y_m if position_active else 0.0
         ) + body_forward * math.sin(target_heading_rad)
+        path_leg = 'NONE'
+        if self.square_path_side_m:
+            target_x, target_y, path_leg = square_waypoint(
+                elapsed, self.square_path_side_m,
+            )
+        hover_until_s = 9.5 if self.square_path_side_m else 6.0
+        end_s = hover_until_s + 4.5
         speeds, phase, saturated = motor_speeds(
             self.odometry, elapsed, self.parameters, yaw_pulse_nm=pulse,
             target_x_m=target_x, target_y_m=target_y,
             target_yaw_rad=target_heading_rad,
+            hover_until_s=hover_until_s,
         )
         self.saturated_updates += saturated
         command = Actuators()
@@ -485,6 +568,7 @@ class MotorScenario(Node):
             'requested_position_x_m': target_x,
             'requested_position_y_m': target_y,
             'requested_body_forward_m': body_forward,
+            'requested_path_leg': path_leg,
             'target_heading_deg': self.body_heading_deg,
             'yaw_rate_rad_s': self.odometry.twist.twist.angular.z,
             'requested_yaw_torque_nm': (
@@ -499,7 +583,7 @@ class MotorScenario(Node):
             'odometry_stamp_s': (self.odometry.header.stamp.sec
                                  + self.odometry.header.stamp.nanosec * 1e-9),
         })
-        if elapsed >= 10.5 and not self.done:
+        if elapsed >= end_s and not self.done:
             self.done = True
             result = analyze(self.samples, self.saturated_updates,
                              self.parameters, self.body_heading_deg)
@@ -515,6 +599,8 @@ class MotorScenario(Node):
                 result = check_body_forward_pulse(
                     result, self.body_forward_pulse_m, self.body_heading_deg,
                 )
+            if self.square_path_side_m:
+                result = check_square_path(result, self.square_path_side_m)
             self._finish(result)
 
     def _finish(self, result: dict) -> None:
@@ -544,6 +630,8 @@ def main() -> int:
                         help='Body forward/back target at 4.0-4.6 s; max absolute 0.20 m')
     parser.add_argument('--body-heading-deg', type=float, default=0.0,
                         help='Held body heading for body-forward pulse; within [-180, 180]')
+    parser.add_argument('--square-path-side-m', type=float, default=0.0,
+                        help='Clockwise world-axis square side; within (0, 0.15] m')
     args = parser.parse_args()
     position_values = (args.position_pulse_x_m, args.position_pulse_y_m)
     if any(not math.isfinite(value) or abs(value) > 0.20
@@ -566,6 +654,14 @@ def main() -> int:
             not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
             any(position_values)):
         parser.error('body-forward pulse requires --reset-world and cannot combine with other pulse modes')
+    if (not math.isfinite(args.square_path_side_m) or
+            args.square_path_side_m < 0 or args.square_path_side_m > 0.15):
+        parser.error('--square-path-side-m must be finite and within (0, 0.15] when used')
+    if args.square_path_side_m and (
+            not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
+            any(position_values) or args.body_forward_pulse_m or
+            args.body_heading_deg):
+        parser.error('square path requires --reset-world and cannot combine with other experiment modes')
     if not math.isfinite(args.yaw_pulse_nm) or abs(args.yaw_pulse_nm) > 0.01:
         parser.error('--yaw-pulse-nm must be finite and within [-0.01, 0.01]')
     if args.yaw_pulse_nm and (not args.reset_world or args.initial_yaw_deg):
@@ -603,6 +699,7 @@ def main() -> int:
         args.output, args.initial_yaw_deg, args.yaw_pulse_nm,
         args.position_pulse_x_m, args.position_pulse_y_m,
         args.body_forward_pulse_m, args.body_heading_deg,
+        args.square_path_side_m,
     )
     try:
         rclpy.spin(node)

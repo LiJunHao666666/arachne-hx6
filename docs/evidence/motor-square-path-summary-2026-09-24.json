@@ -1,0 +1,56 @@
+{
+  "schema": "arachne.square-path-summary/v1",
+  "date": "2026-09-24",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "scenario_result": "PASS",
+  "acceptance_checks": {
+    "yaw_within_10_deg": true,
+    "limited_motor_fraction_below_5_percent": true,
+    "hover_within_20_cm": true,
+    "all_phases_observed": true,
+    "square_path_commands_recorded": true,
+    "square_waypoints_reached_within_8_cm": true,
+    "square_path_heading_below_1_deg": true
+  },
+  "square_path_test": {
+    "scope": "WORLD_AXIS_CLOCKWISE_SQUARE_AT_ZERO_YAW",
+    "side_m": 0.15,
+    "leg_duration_s": 1.2,
+    "waypoints": {
+      "FORWARD": {
+        "target_x_m": 0.15,
+        "target_y_m": 0.0,
+        "endpoint_error_m": 0.05761866611487485,
+        "sample_count": 60
+      },
+      "LEFT": {
+        "target_x_m": 0.15,
+        "target_y_m": 0.15,
+        "endpoint_error_m": 0.05873724112664069,
+        "sample_count": 60
+      },
+      "BACKWARD": {
+        "target_x_m": 0.0,
+        "target_y_m": 0.15,
+        "endpoint_error_m": 0.05683805516840577,
+        "sample_count": 59
+      },
+      "RIGHT_TO_ORIGIN": {
+        "target_x_m": 0.0,
+        "target_y_m": 0.0,
+        "endpoint_error_m": 0.052875217018532025,
+        "sample_count": 60
+      }
+    },
+    "peak_abs_heading_deg": 0.013829811232961394
+  },
+  "raw_samples_committed": false,
+  "reproduction_document": "../GAZEBO_MOTOR_FIRST_RUN.md",
+  "limitations": [
+    "Ideal Gazebo model and odometry only",
+    "One 0.15 m world-axis square at zero yaw",
+    "A simulation pass does not establish physical flight readiness"
+  ]
+}
