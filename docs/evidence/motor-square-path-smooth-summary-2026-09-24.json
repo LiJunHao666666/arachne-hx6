@@ -1,0 +1,68 @@
+{
+  "schema": "arachne.smooth-square-path-summary/v1",
+  "date": "2026-09-24",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "scenario_result": "PASS",
+  "acceptance_checks": {
+    "yaw_within_10_deg": true,
+    "limited_motor_fraction_below_5_percent": true,
+    "hover_within_20_cm": true,
+    "all_phases_observed": true,
+    "square_path_commands_recorded": true,
+    "square_waypoints_reached_within_8_cm": true,
+    "square_path_heading_below_1_deg": true,
+    "square_reference_speed_within_limit": true,
+    "square_tracking_error_within_10_cm": true,
+    "square_corner_speed_below_10_cm_s": true
+  },
+  "controller_parameters": {
+    "position_kp_mps2_per_m": 2.0,
+    "position_kd_mps2_per_mps": 2.5
+  },
+  "metrics": {
+    "sample_count": 1062,
+    "maximum_altitude_m": 1.308059598297252,
+    "final_altitude_m": 0.0200000003943712,
+    "maximum_horizontal_displacement_m": 0.25988585409722803,
+    "saturated_motor_updates": 0,
+    "peak_tilt_deg": 2.7143595885690925,
+    "peak_abs_yaw_deg": 0.018697791264558387
+  },
+  "square_path_test": {
+    "scope": "SMOOTH_WORLD_AXIS_CLOCKWISE_SQUARE_AT_ZERO_YAW",
+    "side_m": 0.15,
+    "leg_duration_s": 3.0,
+    "move_duration_s": 2.0,
+    "corner_settle_duration_s": 1.0,
+    "peak_reference_speed_m_s": 0.14062499356366945,
+    "reference_speed_limit_m_s": 0.140625,
+    "maximum_tracking_error_m": 0.0651263906470727,
+    "waypoints": {
+      "FORWARD": {
+        "endpoint_error_m": 0.005379574504325052,
+        "corner_speed_m_s": 0.09507998998185341
+      },
+      "LEFT": {
+        "endpoint_error_m": 0.005445575872956619,
+        "corner_speed_m_s": 0.09586773111730788
+      },
+      "BACKWARD": {
+        "endpoint_error_m": 0.005340762198332511,
+        "corner_speed_m_s": 0.09447733757478807
+      },
+      "RIGHT_TO_ORIGIN": {
+        "endpoint_error_m": 0.00534768469252185,
+        "corner_speed_m_s": 0.09447967508936261
+      }
+    }
+  },
+  "raw_samples_committed": false,
+  "reproduction_document": "../GAZEBO_MOTOR_FIRST_RUN.md",
+  "limitations": [
+    "Ideal Gazebo model and odometry only",
+    "One 0.15 m world-axis square at zero yaw",
+    "A simulation pass does not establish physical flight readiness"
+  ]
+}

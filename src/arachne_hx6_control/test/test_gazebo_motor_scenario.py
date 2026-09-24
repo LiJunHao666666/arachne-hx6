@@ -2,11 +2,13 @@
 
 import math
 from pathlib import Path
-import xml.etree.ElementTree as ET
 from types import SimpleNamespace
+import xml.etree.ElementTree as ET
 
 from arachne_hx6_control.gazebo_motor_scenario import (
-    MotorParameters, allocate_wrench, motor_speeds, reference, square_waypoint,
+    allocate_wrench, motor_speeds, MotorParameters, reference,
+    SQUARE_LEG_DURATION_S, SQUARE_MOVE_DURATION_S, SQUARE_START_S,
+    square_trajectory,
 )
 
 
@@ -23,14 +25,37 @@ def test_extended_reference_holds_hover_before_delayed_landing():
     assert reference(12.6, 9.5)[2] == 'DISARMED'
 
 
-def test_square_waypoint_visits_four_clockwise_targets_and_origin():
+def test_square_trajectory_visits_four_clockwise_targets_and_origin():
     side = 0.15
-    assert square_waypoint(3.9, side) == (0.0, 0.0, 'ORIGIN')
-    assert square_waypoint(4.0, side) == (side, 0.0, 'FORWARD')
-    assert square_waypoint(5.2, side) == (side, side, 'LEFT')
-    assert square_waypoint(6.4, side) == (0.0, side, 'BACKWARD')
-    assert square_waypoint(7.6, side) == (0.0, 0.0, 'RIGHT_TO_ORIGIN')
-    assert square_waypoint(8.8, side) == (0.0, 0.0, 'ORIGIN')
+    assert square_trajectory(3.9, side) == (0.0, 0.0, 0.0, 0.0, 'ORIGIN')
+    assert square_trajectory(4.0, side) == (0.0, 0.0, 0.0, 0.0, 'FORWARD')
+    assert square_trajectory(6.0, side) == (side, 0.0, 0.0, 0.0, 'FORWARD')
+    assert square_trajectory(7.0, side) == (side, 0.0, 0.0, 0.0, 'LEFT')
+    assert square_trajectory(10.0, side) == (side, side, 0.0, 0.0, 'BACKWARD')
+    assert square_trajectory(13.0, side) == (
+        0.0, side, 0.0, 0.0, 'RIGHT_TO_ORIGIN'
+    )
+    assert square_trajectory(16.0, side) == (
+        0.0, 0.0, 0.0, 0.0, 'ORIGIN'
+    )
+
+
+def test_square_trajectory_is_continuous_and_speed_limited():
+    side = 0.15
+    speed_limit = 1.875 * side / SQUARE_MOVE_DURATION_S
+    boundaries = [
+        SQUARE_START_S + index * SQUARE_LEG_DURATION_S
+        for index in range(5)
+    ]
+    for boundary in boundaries:
+        before = square_trajectory(boundary - 1e-6, side)
+        after = square_trajectory(boundary, side)
+        assert math.hypot(before[0] - after[0], before[1] - after[1]) < 1e-8
+        assert math.hypot(before[2], before[3]) < 1e-8
+        assert math.hypot(after[2], after[3]) < 1e-8
+    for index in range(1201):
+        sample = square_trajectory(SQUARE_START_S + index * 0.01, side)
+        assert math.hypot(sample[2], sample[3]) <= speed_limit + 1e-12
 
 
 def test_hover_allocation_has_six_bounded_equal_motor_commands():
@@ -38,8 +63,10 @@ def test_hover_allocation_has_six_bounded_equal_motor_commands():
     speeds, saturated = allocate_wrench(p.mass_kg * p.gravity_m_s2, 0, 0, 0)
     assert len(speeds) == 6 and saturated == 0
     assert max(speeds) - min(speeds) < 1e-9
-    assert all(0 < speed <= math.sqrt(p.max_thrust_per_rotor_n / p.motor_constant_n_per_rad_s2)
-               for speed in speeds)
+    maximum_speed = math.sqrt(
+        p.max_thrust_per_rotor_n / p.motor_constant_n_per_rad_s2
+    )
+    assert all(0 < speed <= maximum_speed for speed in speeds)
 
 
 def test_motor_command_disarms_and_responds_to_roll_error():
@@ -53,7 +80,7 @@ def test_motor_command_disarms_and_responds_to_roll_error():
         twist=SimpleNamespace(twist=SimpleNamespace(linear=zero, angular=zero)),
     )
     active, phase, _ = motor_speeds(odometry, 4.0)
-    assert phase == 'HOVER' and len(set(round(v, 6) for v in active)) > 1
+    assert phase == 'HOVER' and len({round(v, 6) for v in active}) > 1
     stopped, phase, _ = motor_speeds(odometry, 10.0)
     assert phase == 'DISARMED' and stopped == [0.0] * 6
 
@@ -127,9 +154,13 @@ def test_rotated_heading_converts_world_diagonal_to_body_forward_torque():
     assert abs(roll_torque) < 1e-10
     assert pitch_torque > 0
 
+
 def test_controller_assumptions_match_gazebo_motor_model():
     p = MotorParameters()
-    world = Path(__file__).resolve().parents[3] / 'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf'
+    world = (
+        Path(__file__).resolve().parents[3]
+        / 'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf'
+    )
     model = ET.parse(world).getroot().find("world/model[@name='arachne_flight_hex']")
     body_mass = float(model.find("link[@name='base_link']/inertial/mass").text)
     rotor_mass = sum(float(model.find(f"link[@name='rotor_{i}']/inertial/mass").text)
@@ -146,11 +177,18 @@ def test_controller_assumptions_match_gazebo_motor_model():
                                 p.motor_time_constant_s)
                for motor in motors)
 
+
 def test_phase_diagnostics_distinguish_motor_counts_from_control_updates():
     from arachne_hx6_control.gazebo_motor_scenario import summarize_phases
+
     def row(phase, count, yaw):
-        return dict(phase=phase, saturated_motors=count, yaw_deg=yaw,
-                    yaw_rate_rad_s=-2.0, requested_yaw_torque_nm=0.1)
+        return {
+            'phase': phase,
+            'saturated_motors': count,
+            'yaw_deg': yaw,
+            'yaw_rate_rad_s': -2.0,
+            'requested_yaw_torque_nm': 0.1,
+        }
     result = summarize_phases([row('HOVER', 6, -170), row('HOVER', 0, 10),
                                row('LAND', 3, 20)])
     assert result['HOVER']['limited_motor_count'] == 6
@@ -166,16 +204,25 @@ def test_allocation_reconstructs_gazebo_reaction_torque():
     p = MotorParameters()
     for yaw in (-0.02, 0.02):
         speeds, saturated = allocate_wrench(p.mass_kg * p.gravity_m_s2, 0, 0, yaw)
-        thrusts = [p.motor_constant_n_per_rad_s2 * v*v for v in speeds]
-        world = Path(__file__).resolve().parents[3] / 'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf'
-        plugins = ET.parse(world).getroot().find("world/model[@name='arachne_flight_hex']").findall('plugin')
+        thrusts = [p.motor_constant_n_per_rad_s2 * v * v for v in speeds]
+        world = (
+            Path(__file__).resolve().parents[3]
+            / 'src/arachne_hx6_simulation/worlds/flight_hex_motor.sdf'
+        )
+        model = ET.parse(world).getroot().find(
+            "world/model[@name='arachne_flight_hex']"
+        )
+        plugins = model.findall('plugin')
         actual = 0.0
         for motor in plugins:
             index = motor.findtext('actuator_number')
             if index is None:
                 continue
             direction = 1 if motor.findtext('turningDirection') == 'ccw' else -1
-            actual += -direction * thrusts[int(index)] * float(motor.findtext('momentConstant'))
+            actual += (
+                -direction * thrusts[int(index)]
+                * float(motor.findtext('momentConstant'))
+            )
         assert saturated == 0
         assert math.isclose(actual, yaw, abs_tol=1e-10)
 
@@ -186,9 +233,18 @@ def test_acceptance_rejects_yaw_spin_despite_good_height():
     for phase, elapsed, z in [('SETTLE', 0.1, 0.02), ('TAKEOFF', 2, 0.7),
                               ('HOVER', 5, 1.22), ('LAND', 8, 0.3), ('DISARMED', 10, 0.02)]:
         for _ in range(12):
-            samples.append(dict(phase=phase, elapsed_s=elapsed, z_m=z, x_m=0, y_m=0,
-                                tilt_deg=0, yaw_deg=0, yaw_rate_rad_s=0,
-                                requested_yaw_torque_nm=0, saturated_motors=0))
+            samples.append({
+                'phase': phase,
+                'elapsed_s': elapsed,
+                'z_m': z,
+                'x_m': 0,
+                'y_m': 0,
+                'tilt_deg': 0,
+                'yaw_deg': 0,
+                'yaw_rate_rad_s': 0,
+                'requested_yaw_torque_nm': 0,
+                'saturated_motors': 0,
+            })
     assert analyze(samples, 0)['scenario_result'] == 'PASS'
     samples[20]['yaw_deg'] = 170
     assert analyze(samples, 0)['scenario_result'] == 'FAIL'
@@ -198,10 +254,16 @@ def test_acceptance_rejects_yaw_spin_despite_good_height():
 
 def test_yaw_recovery_requires_injection_and_convergence():
     from arachne_hx6_control.gazebo_motor_scenario import check_yaw_recovery
+
     def evidence(initial, final):
-        return dict(scenario_result='PASS', acceptance_checks={'base': True}, samples=[
-            dict(yaw_deg=initial, phase='SETTLE', elapsed_s=0),
-            dict(yaw_deg=final, phase='HOVER', elapsed_s=5)])
+        return {
+            'scenario_result': 'PASS',
+            'acceptance_checks': {'base': True},
+            'samples': [
+                {'yaw_deg': initial, 'phase': 'SETTLE', 'elapsed_s': 0},
+                {'yaw_deg': final, 'phase': 'HOVER', 'elapsed_s': 5},
+            ],
+        }
     assert check_yaw_recovery(evidence(5, 0.2), 5)['scenario_result'] == 'PASS'
     assert check_yaw_recovery(evidence(-5, -0.2), -5)['scenario_result'] == 'PASS'
     assert check_yaw_recovery(evidence(0, 0), 5)['scenario_result'] == 'FAIL'
@@ -229,12 +291,23 @@ def test_feedback_watchdog_missing_stale_duplicate_and_reversed_time():
 
 def test_pulse_acceptance_requires_signed_response_and_recovery():
     from arachne_hx6_control.gazebo_motor_scenario import check_yaw_pulse
+
     def evidence(sign=1, recovery=0.2, injected=True):
-        rows = [dict(elapsed_s=4.01+i*0.02, yaw_deg=sign*0.4,
-                     injected_yaw_command_nm=sign*0.01 if injected else 0) for i in range(12)]
-        rows += [dict(elapsed_s=5.51+i*0.02, yaw_deg=recovery,
-                      injected_yaw_command_nm=0) for i in range(12)]
-        return dict(samples=rows, acceptance_checks={'base': True}, scenario_result='PASS')
+        rows = [{
+            'elapsed_s': 4.01 + i * 0.02,
+            'yaw_deg': sign * 0.4,
+            'injected_yaw_command_nm': sign * 0.01 if injected else 0,
+        } for i in range(12)]
+        rows += [{
+            'elapsed_s': 5.51 + i * 0.02,
+            'yaw_deg': recovery,
+            'injected_yaw_command_nm': 0,
+        } for i in range(12)]
+        return {
+            'samples': rows,
+            'acceptance_checks': {'base': True},
+            'scenario_result': 'PASS',
+        }
     assert check_yaw_pulse(evidence(), 0.01)['scenario_result'] == 'PASS'
     assert check_yaw_pulse(evidence(-1), -0.01)['scenario_result'] == 'PASS'
     assert check_yaw_pulse(evidence(-1), 0.01)['scenario_result'] == 'FAIL'
@@ -359,25 +432,34 @@ def test_square_path_acceptance_requires_every_commanded_waypoint():
     side = 0.15
     legs = [
         ('FORWARD', 4.0, side, 0.0),
-        ('LEFT', 5.2, side, side),
-        ('BACKWARD', 6.4, 0.0, side),
-        ('RIGHT_TO_ORIGIN', 7.6, 0.0, 0.0),
+        ('LEFT', 7.0, side, side),
+        ('BACKWARD', 10.0, 0.0, side),
+        ('RIGHT_TO_ORIGIN', 13.0, 0.0, 0.0),
     ]
 
     def evidence(bad_leg=None, wrong_command=False):
         rows = []
         for name, start, target_x, target_y in legs:
-            for index in range(60):
+            for index in range(150):
+                elapsed = start + index * 0.02
+                reference_x, reference_y, reference_vx, reference_vy, reference_leg = (
+                    square_trajectory(elapsed, side)
+                )
                 offset = 0.10 if name == bad_leg else 0.0
                 rows.append({
-                    'elapsed_s': start + index * 0.02,
-                    'x_m': target_x + offset,
-                    'y_m': target_y,
+                    'elapsed_s': elapsed,
+                    'x_m': reference_x + offset,
+                    'y_m': reference_y,
                     'yaw_deg': 0.2,
-                    'requested_position_x_m': target_x,
-                    'requested_position_y_m': target_y,
+                    'velocity_x_m_s': 0.01,
+                    'velocity_y_m_s': 0.01,
+                    'requested_position_x_m': reference_x,
+                    'requested_position_y_m': reference_y,
+                    'requested_velocity_x_m_s': reference_vx,
+                    'requested_velocity_y_m_s': reference_vy,
                     'requested_path_leg': (
-                        'WRONG' if wrong_command and name == 'LEFT' else name
+                        'WRONG' if wrong_command and name == 'LEFT'
+                        else reference_leg
                     ),
                 })
         return {
