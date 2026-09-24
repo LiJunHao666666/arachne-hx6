@@ -17,7 +17,7 @@ from rclpy.node import Node
 
 
 SQUARE_START_S = 4.0
-SQUARE_LEG_DURATION_S = 3.0
+SQUARE_LEG_DURATION_S = 3.5
 SQUARE_MOVE_DURATION_S = 2.0
 SQUARE_END_S = SQUARE_START_S + 4 * SQUARE_LEG_DURATION_S
 SQUARE_HOVER_UNTIL_S = SQUARE_END_S + 0.7
@@ -62,7 +62,7 @@ def reference(elapsed_s: float, hover_until_s: float = 6.0
 
 def square_trajectory(elapsed_s: float, side_m: float
                       ) -> tuple[float, float, float, float, str]:
-    """Return a smooth world-axis reference for a clockwise square."""
+    """Return a smooth +X, +Y, -X, -Y world-axis square reference."""
     legs = [
         ('FORWARD', (0.0, 0.0), (side_m, 0.0)),
         ('LEFT', (side_m, 0.0), (side_m, side_m)),
@@ -138,6 +138,25 @@ def euler_from_quaternion(q) -> tuple[float, float, float]:
     return roll, pitch, yaw
 
 
+def world_linear_velocity(odometry: Odometry) -> tuple[float, float, float]:
+    """Rotate child-frame odometry linear velocity into the fixed pose frame."""
+    q = odometry.pose.pose.orientation
+    v = odometry.twist.twist.linear
+    # Gazebo OdometryPublisher reports twist in the body frame (dimensions=3).
+    # Include roll/pitch so vertical motion is not mistaken for horizontal drift.
+    return (
+        (1 - 2 * (q.y**2 + q.z**2)) * v.x
+        + 2 * (q.x * q.y - q.w * q.z) * v.y
+        + 2 * (q.x * q.z + q.w * q.y) * v.z,
+        2 * (q.x * q.y + q.w * q.z) * v.x
+        + (1 - 2 * (q.x**2 + q.z**2)) * v.y
+        + 2 * (q.y * q.z - q.w * q.x) * v.z,
+        2 * (q.x * q.z - q.w * q.y) * v.x
+        + 2 * (q.y * q.z + q.w * q.x) * v.y
+        + (1 - 2 * (q.x**2 + q.y**2)) * v.z,
+    )
+
+
 def motor_speeds(odometry: Odometry, elapsed_s: float,
                  parameters: MotorParameters = MotorParameters(),
                  yaw_pulse_nm: float = 0.0,
@@ -153,15 +172,15 @@ def motor_speeds(odometry: Odometry, elapsed_s: float,
     if phase in ('SETTLE', 'DISARMED'):
         return [0.0] * 6, phase, 0
     position = odometry.pose.pose.position
-    velocity = odometry.twist.twist.linear
+    velocity_x, velocity_y, velocity_z = world_linear_velocity(odometry)
     roll, pitch, yaw = euler_from_quaternion(odometry.pose.pose.orientation)
     rates = odometry.twist.twist.angular
     desired_ax = (p.position_kp_mps2_per_m * (target_x_m - position.x)
                   + p.position_kd_mps2_per_mps *
-                  (target_vx_m_s - velocity.x))
+                  (target_vx_m_s - velocity_x))
     desired_ay = (p.position_kp_mps2_per_m * (target_y_m - position.y)
                   + p.position_kd_mps2_per_mps *
-                  (target_vy_m_s - velocity.y))
+                  (target_vy_m_s - velocity_y))
     desired_body_ax = math.cos(yaw) * desired_ax + math.sin(yaw) * desired_ay
     desired_body_ay = -math.sin(yaw) * desired_ax + math.cos(yaw) * desired_ay
     target_roll = clamp(-desired_body_ay / p.gravity_m_s2, -0.15, 0.15)
@@ -169,7 +188,7 @@ def motor_speeds(odometry: Odometry, elapsed_s: float,
     total = (
         p.mass_kg * p.gravity_m_s2
         + p.altitude_kp_n_per_m * (target_z - position.z)
-        + p.vertical_speed_kd_n_per_mps * (target_vz - velocity.z)
+        + p.vertical_speed_kd_n_per_mps * (target_vz - velocity_z)
     )
     roll_nm = (
         p.attitude_kp_nm_per_rad * (target_roll - roll)
@@ -439,18 +458,21 @@ def check_body_forward_pulse(result: dict, requested_m: float,
     return result
 
 
-def check_square_path(result: dict, side_m: float) -> dict:
+def check_square_path(result: dict, side_m: float,
+                      heading_deg: float = 0.0) -> dict:
     """Require the smooth reference, all four corners, and stable heading."""
-    legs = [
-        ('FORWARD', 4.0, 7.0, side_m, 0.0),
-        ('LEFT', 7.0, 10.0, side_m, side_m),
-        ('BACKWARD', 10.0, 13.0, 0.0, side_m),
-        ('RIGHT_TO_ORIGIN', 13.0, 16.0, 0.0, 0.0),
+    targets = [
+        ('FORWARD', side_m, 0.0),
+        ('LEFT', side_m, side_m),
+        ('BACKWARD', 0.0, side_m),
+        ('RIGHT_TO_ORIGIN', 0.0, 0.0),
     ]
     metrics = {}
     recorded = True
     reached = True
-    for name, start, end, target_x, target_y in legs:
+    for index, (name, target_x, target_y) in enumerate(targets):
+        start = SQUARE_START_S + index * SQUARE_LEG_DURATION_S
+        end = start + SQUARE_LEG_DURATION_S
         rows = [
             sample for sample in result['samples']
             if start <= sample['elapsed_s'] < end
@@ -483,12 +505,12 @@ def check_square_path(result: dict, side_m: float) -> dict:
         metrics[name] = {
             'target_x_m': target_x,
             'target_y_m': target_y,
-            'endpoint_error_m': endpoint_error,
+            'endpoint_error_m': endpoint_error if settled else None,
             'sample_count': len(rows),
             'corner_speed_m_s': (
                 math.hypot(settled[-1]['velocity_x_m_s'],
                            settled[-1]['velocity_y_m_s'])
-                if settled else math.inf
+                if settled else None
             ),
         }
         reached = reached and endpoint_error <= 0.08
@@ -499,10 +521,31 @@ def check_square_path(result: dict, side_m: float) -> dict:
     heading_peak = max(
         (abs(sample['yaw_deg']) for sample in path_rows), default=math.inf,
     )
+
+    def heading_error(observed: float) -> float:
+        difference = math.radians(heading_deg - observed)
+        return abs(math.degrees(math.atan2(
+            math.sin(difference), math.cos(difference),
+        )))
+
+    initial = result['samples'][0] if result['samples'] else None
+    heading_error_peak = max(
+        (heading_error(sample['yaw_deg']) for sample in path_rows),
+        default=math.inf,
+    )
     checks = result['acceptance_checks']
     checks['square_path_commands_recorded'] = recorded
     checks['square_waypoints_reached_within_8_cm'] = reached
-    checks['square_path_heading_below_1_deg'] = heading_peak <= 1.0
+    checks['square_heading_injection_observed'] = bool(
+        initial and 0.0 <= initial['elapsed_s'] < 0.5 and
+        heading_error(initial['yaw_deg']) <= 0.5
+    )
+    checks['square_target_heading_recorded'] = bool(path_rows) and all(
+        'target_heading_deg' in sample and
+        heading_error(sample['target_heading_deg']) < 1e-9
+        for sample in path_rows
+    )
+    checks['square_path_heading_error_below_1_deg'] = heading_error_peak <= 1.0
     reference_speeds = [
         math.hypot(sample.get('requested_velocity_x_m_s', math.inf),
                    sample.get('requested_velocity_y_m_s', math.inf))
@@ -526,21 +569,26 @@ def check_square_path(result: dict, side_m: float) -> dict:
         max_tracking_error <= 0.10
     )
     checks['square_corner_speed_below_10_cm_s'] = (
-        bool(corner_speeds) and max(corner_speeds) <= 0.10
+        all(speed is not None and speed <= 0.10 for speed in corner_speeds)
     )
     result['square_path_test'] = {
-        'scope': 'SMOOTH_WORLD_AXIS_CLOCKWISE_SQUARE_AT_ZERO_YAW',
+        'scope': 'SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING',
+        'world_axis_order': ['+X', '+Y', '-X', '-Y'],
+        'target_heading_deg': heading_deg,
+        'observed_initial_heading_deg': initial['yaw_deg'] if initial else None,
         'side_m': side_m,
         'leg_duration_s': SQUARE_LEG_DURATION_S,
         'move_duration_s': SQUARE_MOVE_DURATION_S,
         'corner_settle_duration_s': (
             SQUARE_LEG_DURATION_S - SQUARE_MOVE_DURATION_S
         ),
-        'peak_reference_speed_m_s': peak_reference_speed,
+        'peak_reference_speed_m_s': peak_reference_speed if path_rows else None,
         'reference_speed_limit_m_s': speed_limit,
-        'maximum_tracking_error_m': max_tracking_error,
+        'maximum_tracking_error_m': max_tracking_error if path_rows else None,
         'waypoints': metrics,
-        'peak_abs_heading_deg': heading_peak,
+        'peak_abs_heading_deg': heading_peak if path_rows else None,
+        'peak_abs_heading_error_deg': heading_error_peak if path_rows else None,
+        'linear_velocity_frame': 'WORLD',
     }
     if not all(checks.values()):
         result['scenario_result'] = 'FAIL'
@@ -676,11 +724,14 @@ class MotorScenario(Node):
         roll, pitch, yaw = euler_from_quaternion(
             self.odometry.pose.pose.orientation,
         )
+        velocity_x, velocity_y, velocity_z = world_linear_velocity(self.odometry)
         self.samples.append({
             'elapsed_s': elapsed, 'phase': phase,
             'x_m': pos.x, 'y_m': pos.y, 'z_m': pos.z,
-            'velocity_x_m_s': self.odometry.twist.twist.linear.x,
-            'velocity_y_m_s': self.odometry.twist.twist.linear.y,
+            'velocity_x_m_s': velocity_x,
+            'velocity_y_m_s': velocity_y,
+            'velocity_z_m_s': velocity_z,
+            'linear_velocity_frame': 'WORLD',
             'tilt_deg': math.degrees(math.hypot(roll, pitch)),
             'yaw_deg': math.degrees(yaw),
             'injected_yaw_command_nm': pulse,
@@ -729,7 +780,9 @@ class MotorScenario(Node):
                     result, self.body_forward_pulse_m, self.body_heading_deg,
                 )
             if self.square_path_side_m:
-                result = check_square_path(result, self.square_path_side_m)
+                result = check_square_path(
+                    result, self.square_path_side_m, self.body_heading_deg,
+                )
             self._finish(result)
 
     def _finish(self, result: dict) -> None:
@@ -746,7 +799,8 @@ class MotorScenario(Node):
         rclpy.shutdown()
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Validate experiment combinations before any Gazebo or ROS side effects."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--reset-world', action='store_true',
@@ -762,10 +816,10 @@ def main() -> int:
     parser.add_argument('--body-forward-pulse-m', type=float, default=0.0,
                         help='Body forward/back target at 4.0-4.6 s; max absolute 0.20 m')
     parser.add_argument('--body-heading-deg', type=float, default=0.0,
-                        help='Held body heading for body-forward pulse; within [-180, 180]')
+                        help='Held heading for body-forward or square mode; [-180, 180]')
     parser.add_argument('--square-path-side-m', type=float, default=0.0,
-                        help='Clockwise world-axis square side; within (0, 0.15] m')
-    args = parser.parse_args()
+                        help='World +X/+Y/-X/-Y square side; within (0, 0.15] m')
+    args = parser.parse_args(argv)
     position_values = (args.position_pulse_x_m, args.position_pulse_y_m)
     if any(not math.isfinite(value) or abs(value) > 0.20
            for value in position_values):
@@ -781,8 +835,9 @@ def main() -> int:
     if (not math.isfinite(args.body_heading_deg) or
             abs(args.body_heading_deg) > 180):
         parser.error('--body-heading-deg must be finite and within [-180, 180]')
-    if args.body_heading_deg and not args.body_forward_pulse_m:
-        parser.error('--body-heading-deg requires --body-forward-pulse-m')
+    if args.body_heading_deg and not (
+            args.body_forward_pulse_m or args.square_path_side_m):
+        parser.error('--body-heading-deg requires body-forward or square mode')
     if args.body_forward_pulse_m and (
             not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
             any(position_values)):
@@ -795,8 +850,7 @@ def main() -> int:
         parser.error('--square-path-side-m must be finite and within (0, 0.15] when used')
     if args.square_path_side_m and (
             not args.reset_world or args.initial_yaw_deg or args.yaw_pulse_nm or
-            any(position_values) or args.body_forward_pulse_m or
-            args.body_heading_deg):
+            any(position_values) or args.body_forward_pulse_m):
         parser.error(
             'square path requires --reset-world and cannot combine with '
             'other experiment modes'
@@ -809,6 +863,11 @@ def main() -> int:
         parser.error('--initial-yaw-deg must be finite and between -8 and 8')
     if args.initial_yaw_deg and not args.reset_world:
         parser.error('--initial-yaw-deg requires --reset-world')
+    return args
+
+
+def main() -> int:
+    args = parse_args()
     if args.reset_world:
         response = subprocess.run([
             'gz', 'service', '-s', '/world/arachne_flight/control',
@@ -819,7 +878,7 @@ def main() -> int:
             raise RuntimeError('Gazebo did not acknowledge world reset')
         time.sleep(1.0)  # Allow the spawn height to settle before subscribing.
     pose_yaw_deg = (
-        args.body_heading_deg if args.body_forward_pulse_m
+        args.body_heading_deg if (args.body_forward_pulse_m or args.square_path_side_m)
         else args.initial_yaw_deg
     )
     if pose_yaw_deg:

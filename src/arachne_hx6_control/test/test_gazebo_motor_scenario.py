@@ -1,15 +1,18 @@
 """Motor-level Gazebo control contracts for the planning model."""
 
+import json
 import math
 from pathlib import Path
 from types import SimpleNamespace
 import xml.etree.ElementTree as ET
 
 from arachne_hx6_control.gazebo_motor_scenario import (
-    allocate_wrench, motor_speeds, MotorParameters, reference,
+    allocate_wrench, check_square_path, motor_speeds, MotorParameters,
+    parse_args, reference,
     SQUARE_LEG_DURATION_S, SQUARE_MOVE_DURATION_S, SQUARE_START_S,
-    square_trajectory,
+    square_trajectory, world_linear_velocity,
 )
+import pytest
 
 
 def test_reference_has_takeoff_hover_landing_and_disarm():
@@ -25,17 +28,17 @@ def test_extended_reference_holds_hover_before_delayed_landing():
     assert reference(12.6, 9.5)[2] == 'DISARMED'
 
 
-def test_square_trajectory_visits_four_clockwise_targets_and_origin():
+def test_square_trajectory_visits_world_axis_targets_and_origin():
     side = 0.15
     assert square_trajectory(3.9, side) == (0.0, 0.0, 0.0, 0.0, 'ORIGIN')
     assert square_trajectory(4.0, side) == (0.0, 0.0, 0.0, 0.0, 'FORWARD')
     assert square_trajectory(6.0, side) == (side, 0.0, 0.0, 0.0, 'FORWARD')
-    assert square_trajectory(7.0, side) == (side, 0.0, 0.0, 0.0, 'LEFT')
-    assert square_trajectory(10.0, side) == (side, side, 0.0, 0.0, 'BACKWARD')
-    assert square_trajectory(13.0, side) == (
+    assert square_trajectory(7.5, side) == (side, 0.0, 0.0, 0.0, 'LEFT')
+    assert square_trajectory(11.0, side) == (side, side, 0.0, 0.0, 'BACKWARD')
+    assert square_trajectory(14.5, side) == (
         0.0, side, 0.0, 0.0, 'RIGHT_TO_ORIGIN'
     )
-    assert square_trajectory(16.0, side) == (
+    assert square_trajectory(18.0, side) == (
         0.0, 0.0, 0.0, 0.0, 'ORIGIN'
     )
 
@@ -53,7 +56,7 @@ def test_square_trajectory_is_continuous_and_speed_limited():
         assert math.hypot(before[0] - after[0], before[1] - after[1]) < 1e-8
         assert math.hypot(before[2], before[3]) < 1e-8
         assert math.hypot(after[2], after[3]) < 1e-8
-    for index in range(1201):
+    for index in range(round(4 * SQUARE_LEG_DURATION_S / 0.01) + 1):
         sample = square_trajectory(SQUARE_START_S + index * 0.01, side)
         assert math.hypot(sample[2], sample[3]) <= speed_limit + 1e-12
 
@@ -432,15 +435,15 @@ def test_square_path_acceptance_requires_every_commanded_waypoint():
     side = 0.15
     legs = [
         ('FORWARD', 4.0, side, 0.0),
-        ('LEFT', 7.0, side, side),
-        ('BACKWARD', 10.0, 0.0, side),
-        ('RIGHT_TO_ORIGIN', 13.0, 0.0, 0.0),
+        ('LEFT', 7.5, side, side),
+        ('BACKWARD', 11.0, 0.0, side),
+        ('RIGHT_TO_ORIGIN', 14.5, 0.0, 0.0),
     ]
 
     def evidence(bad_leg=None, wrong_command=False):
-        rows = []
+        rows = [{'elapsed_s': 0.0, 'yaw_deg': 0.0}]
         for name, start, target_x, target_y in legs:
-            for index in range(150):
+            for index in range(175):
                 elapsed = start + index * 0.02
                 reference_x, reference_y, reference_vx, reference_vy, reference_leg = (
                     square_trajectory(elapsed, side)
@@ -451,6 +454,7 @@ def test_square_path_acceptance_requires_every_commanded_waypoint():
                     'x_m': reference_x + offset,
                     'y_m': reference_y,
                     'yaw_deg': 0.2,
+                    'target_heading_deg': 0.0,
                     'velocity_x_m_s': 0.01,
                     'velocity_y_m_s': 0.01,
                     'requested_position_x_m': reference_x,
@@ -475,3 +479,154 @@ def test_square_path_acceptance_requires_every_commanded_waypoint():
     assert check_square_path(
         evidence(wrong_command=True), side,
     )['scenario_result'] == 'FAIL'
+
+
+@pytest.mark.parametrize('yaw_deg', [-90, -45, 0, 45, 90])
+def test_matching_world_velocity_does_not_add_spurious_horizontal_torque(yaw_deg):
+    yaw = math.radians(yaw_deg)
+    world_x, world_y = 0.12, -0.08
+    zero = SimpleNamespace(x=0.0, y=0.0, z=0.0)
+    odometry = SimpleNamespace(
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            position=SimpleNamespace(x=0.0, y=0.0, z=1.22),
+            orientation=SimpleNamespace(
+                w=math.cos(yaw / 2), x=0.0, y=0.0, z=math.sin(yaw / 2),
+            ),
+        )),
+        twist=SimpleNamespace(twist=SimpleNamespace(
+            linear=SimpleNamespace(
+                x=math.cos(yaw) * world_x + math.sin(yaw) * world_y,
+                y=-math.sin(yaw) * world_x + math.cos(yaw) * world_y,
+                z=0.0,
+            ),
+            angular=zero,
+        )),
+    )
+    assert world_linear_velocity(odometry) == pytest.approx((world_x, world_y, 0))
+    moving, _, _ = motor_speeds(
+        odometry, 4.1, target_vx_m_s=world_x, target_vy_m_s=world_y,
+        target_yaw_rad=yaw,
+    )
+    odometry.twist.twist.linear = zero
+    stationary, _, _ = motor_speeds(odometry, 4.1, target_yaw_rad=yaw)
+    assert moving == pytest.approx(stationary, abs=1e-9)
+
+
+def test_tilted_vertical_motion_rotates_all_three_velocity_components():
+    # A 30 degree pitch and 90 degree yaw; world +Z velocity is 0.4 m/s.
+    pitch, yaw = math.radians(30), math.radians(90)
+    cp, sp = math.cos(pitch / 2), math.sin(pitch / 2)
+    cy, sy = math.cos(yaw / 2), math.sin(yaw / 2)
+    odometry = SimpleNamespace(
+        pose=SimpleNamespace(pose=SimpleNamespace(
+            orientation=SimpleNamespace(w=cy * cp, x=-sy * sp, y=cy * sp, z=sy * cp),
+        )),
+        twist=SimpleNamespace(twist=SimpleNamespace(
+            linear=SimpleNamespace(x=-0.4 * math.sin(pitch), y=0.0,
+                                   z=0.4 * math.cos(pitch)),
+        )),
+    )
+    assert world_linear_velocity(odometry) == pytest.approx((0, 0, 0.4), abs=1e-12)
+
+
+@pytest.mark.parametrize('heading', [-180, -45, 0, 45, 180])
+def test_square_cli_accepts_held_heading(heading):
+    args = parse_args([
+        '--output', '/tmp/test-square.json', '--reset-world',
+        '--square-path-side-m', '0.15', '--body-heading-deg', str(heading),
+    ])
+    assert args.body_heading_deg == heading
+
+
+@pytest.mark.parametrize('extra', [
+    ['--initial-yaw-deg', '1'],
+    ['--yaw-pulse-nm', '0.001'],
+    ['--position-pulse-x-m', '0.1'],
+    ['--body-forward-pulse-m', '0.1'],
+    ['--body-heading-deg', 'nan'],
+    ['--body-heading-deg', '181'],
+    ['--square-path-side-m', 'inf'],
+    ['--square-path-side-m', '0.16'],
+])
+def test_square_cli_rejects_conflicts_and_invalid_values(extra):
+    with pytest.raises(SystemExit) as error:
+        parse_args([
+            '--output', '/tmp/test-square.json', '--reset-world',
+            '--square-path-side-m', '0.15',
+        ] + extra)
+    assert error.value.code == 2
+
+
+def test_square_heading_requires_reset_and_a_supported_experiment():
+    for options in (
+        ['--square-path-side-m', '0.15', '--body-heading-deg', '45'],
+        ['--reset-world', '--body-heading-deg', '45'],
+    ):
+        with pytest.raises(SystemExit):
+            parse_args(['--output', '/tmp/test-square.json'] + options)
+
+
+def square_evidence(heading):
+    rows = [{'elapsed_s': 0.0, 'yaw_deg': heading}]
+    for index in range(700):
+        elapsed = 4 + index * 0.02
+        x, y, vx, vy, leg = square_trajectory(elapsed, 0.15)
+        rows.append({
+            'elapsed_s': elapsed, 'x_m': x, 'y_m': y,
+            'velocity_x_m_s': vx, 'velocity_y_m_s': vy,
+            'requested_position_x_m': x, 'requested_position_y_m': y,
+            'requested_velocity_x_m_s': vx, 'requested_velocity_y_m_s': vy,
+            'requested_path_leg': leg, 'yaw_deg': heading,
+            'target_heading_deg': heading,
+        })
+    return {'samples': rows, 'acceptance_checks': {}, 'scenario_result': 'PASS'}
+
+
+@pytest.mark.parametrize('heading', [-180, -45, 0, 45, 180])
+def test_square_accepts_world_path_with_held_heading_and_angle_wrap(heading):
+    evidence = square_evidence(heading)
+    if abs(heading) == 180:
+        for sample in evidence['samples']:
+            sample['yaw_deg'] = -heading
+    result = check_square_path(evidence, 0.15, heading)
+    assert result['scenario_result'] == 'PASS'
+    assert result['square_path_test']['peak_abs_heading_error_deg'] < 1e-9
+
+
+@pytest.mark.parametrize('fault', [
+    'initial_heading', 'missing_initial', 'path_heading', 'command_heading',
+    'rotated_path', 'missing_corner', 'corner_speed',
+])
+def test_square_rejects_wrong_heading_or_route_evidence(fault):
+    evidence = square_evidence(45)
+    rows = evidence['samples']
+    if fault == 'initial_heading':
+        rows[0]['yaw_deg'] = 0
+    elif fault == 'missing_initial':
+        rows.pop(0)
+    elif fault == 'path_heading':
+        rows[50]['yaw_deg'] = -45
+    elif fault == 'command_heading':
+        rows[50]['target_heading_deg'] = -45
+    elif fault == 'rotated_path':
+        for sample in rows[1:]:
+            x, y = sample['x_m'], sample['y_m']
+            sample['x_m'] = (x - y) / math.sqrt(2)
+            sample['y_m'] = (x + y) / math.sqrt(2)
+    elif fault == 'missing_corner':
+        evidence['samples'] = rows[:451]
+    else:
+        rows[-1]['velocity_x_m_s'] = 0.2
+    result = check_square_path(evidence, 0.15, 45)
+    assert result['scenario_result'] == 'FAIL'
+    json.dumps(result, allow_nan=False)
+
+
+def test_square_empty_evidence_is_serializable_failure_and_preserves_base_failure():
+    empty = {'samples': [], 'acceptance_checks': {}, 'scenario_result': 'PASS'}
+    result = check_square_path(empty, 0.15, 45)
+    assert result['scenario_result'] == 'FAIL'
+    json.dumps(result, allow_nan=False)
+    base_failure = square_evidence(45)
+    base_failure['scenario_result'] = 'FAIL'
+    assert check_square_path(base_failure, 0.15, 45)['scenario_result'] == 'FAIL'
