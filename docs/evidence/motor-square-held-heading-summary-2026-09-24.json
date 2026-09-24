@@ -1,0 +1,494 @@
+{
+  "schema": "arachne.held-heading-square-summary/v1",
+  "date": "2026-09-24",
+  "status": "ANALYSIS_ONLY",
+  "procurement_allowed": false,
+  "flight_readiness": "UNDETERMINED",
+  "scope": "GAZEBO_8_11_0_IDEAL_ODOMETRY_PLANNING_MODEL",
+  "scenario_result": "PASS",
+  "final_source_sha256": "21fb2e9dd380fdfee1dca8f8a955baae1d9ab6432c67f6b22d286a3f564128b7",
+  "final_source_file": "src/arachne_hx6_control/arachne_hx6_control/gazebo_motor_scenario.py",
+  "final_configuration_run_labels": [
+    "final_plus45",
+    "final_minus45",
+    "final_zero"
+  ],
+  "controller_parameters": {
+    "mass_kg": 0.65,
+    "gravity_m_s2": 9.80665,
+    "arm_m": 0.12,
+    "motor_constant_n_per_rad_s2": 1.269e-05,
+    "moment_constant_m": 0.016754,
+    "max_thrust_per_rotor_n": 2.0,
+    "motor_time_constant_s": 0.0182,
+    "altitude_kp_n_per_m": 4.0,
+    "vertical_speed_kd_n_per_mps": 2.0,
+    "attitude_kp_nm_per_rad": 0.08,
+    "attitude_kd_nm_per_rad_s": 0.025,
+    "position_kp_mps2_per_m": 2.0,
+    "position_kd_mps2_per_mps": 2.5
+  },
+  "limits": {
+    "side_m": 0.15,
+    "reference_speed_m_s": 0.140625,
+    "tracking_error_m": 0.1,
+    "corner_endpoint_error_m": 0.08,
+    "corner_endpoint_speed_m_s": 0.1,
+    "path_heading_error_deg": 1.0,
+    "initial_heading_error_deg": 0.5,
+    "horizontal_displacement_m": 0.29213203435596424,
+    "final_altitude_m": 0.15,
+    "peak_tilt_deg": 15.0
+  },
+  "tests": {
+    "package": "arachne_hx6_control",
+    "passed": 68,
+    "skipped": 1,
+    "skip_reason": "Existing generated-source copyright check",
+    "build": "PASS",
+    "flake8": "PASS",
+    "pep257": "PASS"
+  },
+  "runs": [
+    {
+      "label": "initial_zero",
+      "final_configuration": false,
+      "raw_local_file": "/tmp/arachne_square_heading_zero_20260924.json",
+      "raw_sha256": "c9b97d4e3bf51506339493def105d5b1789dbca999958e72aaa441dbe3ce3390",
+      "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --square-path-side-m 0.15 --body-heading-deg 0 --output /tmp/arachne_square_heading_zero_20260924.json",
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "square_path_commands_recorded": true,
+        "square_waypoints_reached_within_8_cm": true,
+        "square_heading_injection_observed": true,
+        "square_target_heading_recorded": true,
+        "square_path_heading_error_below_1_deg": true,
+        "square_reference_speed_within_limit": true,
+        "square_tracking_error_within_10_cm": true,
+        "square_corner_speed_below_10_cm_s": true
+      },
+      "metrics": {
+        "sample_count": 1062,
+        "maximum_altitude_m": 1.3023518972247985,
+        "final_altitude_m": 0.019999999813585932,
+        "maximum_horizontal_displacement_m": 0.25998561633267064,
+        "saturated_motor_updates": 0,
+        "peak_tilt_deg": 2.708835105729069,
+        "peak_abs_yaw_deg": 0.018851073533277835,
+        "peak_abs_yaw_error_deg": 0.018851073533277835,
+        "limited_motor_fraction": 0.0,
+        "hover_max_error_m": 0.031980316724532054
+      },
+      "square_path_test": {
+        "scope": "SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING",
+        "world_axis_order": [
+          "+X",
+          "+Y",
+          "-X",
+          "-Y"
+        ],
+        "target_heading_deg": 0.0,
+        "observed_initial_heading_deg": -1.9516394803694866e-17,
+        "side_m": 0.15,
+        "leg_duration_s": 3.0,
+        "move_duration_s": 2.0,
+        "corner_settle_duration_s": 1.0,
+        "peak_reference_speed_m_s": 0.14062499995342181,
+        "reference_speed_limit_m_s": 0.140625,
+        "maximum_tracking_error_m": 0.06557062968598784,
+        "waypoints": {
+          "FORWARD": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.005693266960064974,
+            "sample_count": 151,
+            "corner_speed_m_s": 0.09593537927430701
+          },
+          "LEFT": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.005621549900678189,
+            "sample_count": 150,
+            "corner_speed_m_s": 0.0966564190255676
+          },
+          "BACKWARD": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.007375631240450263,
+            "sample_count": 149,
+            "corner_speed_m_s": 0.09844917540357649
+          },
+          "RIGHT_TO_ORIGIN": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.005485199466857443,
+            "sample_count": 151,
+            "corner_speed_m_s": 0.09519619693978462
+          }
+        },
+        "peak_abs_heading_deg": 0.018851073533277835,
+        "peak_abs_heading_error_deg": 0.018851073533277835,
+        "linear_velocity_frame": "WORLD"
+      }
+    },
+    {
+      "label": "initial_plus45_failure",
+      "final_configuration": false,
+      "raw_local_file": "/tmp/arachne_square_heading_plus45_20260924.json",
+      "raw_sha256": "f3b5c70d93aaba227411948fd0f737832f6db8616ba5cf1773c9853b93131d36",
+      "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --square-path-side-m 0.15 --body-heading-deg 45 --output /tmp/arachne_square_heading_plus45_20260924.json",
+      "scenario_result": "FAIL",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "square_path_commands_recorded": true,
+        "square_waypoints_reached_within_8_cm": true,
+        "square_heading_injection_observed": true,
+        "square_target_heading_recorded": true,
+        "square_path_heading_error_below_1_deg": true,
+        "square_reference_speed_within_limit": true,
+        "square_tracking_error_within_10_cm": true,
+        "square_corner_speed_below_10_cm_s": false
+      },
+      "metrics": {
+        "sample_count": 1062,
+        "maximum_altitude_m": 1.305264629635815,
+        "final_altitude_m": 0.019999896324441963,
+        "maximum_horizontal_displacement_m": 0.26060680566159045,
+        "saturated_motor_updates": 0,
+        "peak_tilt_deg": 2.6766338635981386,
+        "peak_abs_yaw_deg": 45.0255555263797,
+        "peak_abs_yaw_error_deg": 0.025555526379697824,
+        "limited_motor_fraction": 0.0,
+        "hover_max_error_m": 0.035672102919503956
+      },
+      "square_path_test": {
+        "scope": "SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING",
+        "world_axis_order": [
+          "+X",
+          "+Y",
+          "-X",
+          "-Y"
+        ],
+        "target_heading_deg": 45.0,
+        "observed_initial_heading_deg": 45.000000000000014,
+        "side_m": 0.15,
+        "leg_duration_s": 3.0,
+        "move_duration_s": 2.0,
+        "corner_settle_duration_s": 1.0,
+        "peak_reference_speed_m_s": 0.14062499992281585,
+        "reference_speed_limit_m_s": 0.140625,
+        "maximum_tracking_error_m": 0.0659934625303496,
+        "waypoints": {
+          "FORWARD": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.006945170850271725,
+            "sample_count": 150,
+            "corner_speed_m_s": 0.0994076016425555
+          },
+          "LEFT": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.00699654319206777,
+            "sample_count": 150,
+            "corner_speed_m_s": 0.1006975654508361
+          },
+          "BACKWARD": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.006353364308928918,
+            "sample_count": 150,
+            "corner_speed_m_s": 0.09845006456232418
+          },
+          "RIGHT_TO_ORIGIN": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.0066660458173255985,
+            "sample_count": 150,
+            "corner_speed_m_s": 0.09869907305092619
+          }
+        },
+        "peak_abs_heading_deg": 45.0255555263797,
+        "peak_abs_heading_error_deg": 0.025555526379697824,
+        "linear_velocity_frame": "WORLD"
+      }
+    },
+    {
+      "label": "final_plus45",
+      "final_configuration": true,
+      "raw_local_file": "/tmp/arachne_square_heading_plus45_settled_20260924.json",
+      "raw_sha256": "81437fb86966755107bec3371a04affbcad65bd97b5c2ef745ba1cd57f0f9f23",
+      "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --square-path-side-m 0.15 --body-heading-deg 45 --output /tmp/arachne_square_heading_plus45_settled_20260924.json",
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "square_path_commands_recorded": true,
+        "square_waypoints_reached_within_8_cm": true,
+        "square_heading_injection_observed": true,
+        "square_target_heading_recorded": true,
+        "square_path_heading_error_below_1_deg": true,
+        "square_reference_speed_within_limit": true,
+        "square_tracking_error_within_10_cm": true,
+        "square_corner_speed_below_10_cm_s": true
+      },
+      "metrics": {
+        "sample_count": 1161,
+        "maximum_altitude_m": 1.301295354438301,
+        "final_altitude_m": 0.019999997172344585,
+        "maximum_horizontal_displacement_m": 0.2610294705606414,
+        "saturated_motor_updates": 0,
+        "peak_tilt_deg": 2.6896705530371303,
+        "peak_abs_yaw_deg": 45.020649789871115,
+        "peak_abs_yaw_error_deg": 0.026885163683672886,
+        "limited_motor_fraction": 0.0,
+        "hover_max_error_m": 0.034649044817041785
+      },
+      "square_path_test": {
+        "scope": "SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING",
+        "world_axis_order": [
+          "+X",
+          "+Y",
+          "-X",
+          "-Y"
+        ],
+        "target_heading_deg": 45.0,
+        "observed_initial_heading_deg": 45.000000000000014,
+        "side_m": 0.15,
+        "leg_duration_s": 3.5,
+        "move_duration_s": 2.0,
+        "corner_settle_duration_s": 1.5,
+        "peak_reference_speed_m_s": 0.14062499999819547,
+        "reference_speed_limit_m_s": 0.140625,
+        "maximum_tracking_error_m": 0.06568963558405876,
+        "waypoints": {
+          "FORWARD": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.014521547126399482,
+            "sample_count": 176,
+            "corner_speed_m_s": 0.01145115096385121
+          },
+          "LEFT": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.014912732726670814,
+            "sample_count": 174,
+            "corner_speed_m_s": 0.009867413854947198
+          },
+          "BACKWARD": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.014845740836041151,
+            "sample_count": 176,
+            "corner_speed_m_s": 0.012737001695484222
+          },
+          "RIGHT_TO_ORIGIN": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.015082530974611524,
+            "sample_count": 174,
+            "corner_speed_m_s": 0.009679144261487506
+          }
+        },
+        "peak_abs_heading_deg": 45.020649789871115,
+        "peak_abs_heading_error_deg": 0.026885163683672886,
+        "linear_velocity_frame": "WORLD"
+      }
+    },
+    {
+      "label": "final_minus45",
+      "final_configuration": true,
+      "raw_local_file": "/tmp/arachne_square_heading_minus45_settled_20260924.json",
+      "raw_sha256": "7d148906853b6378c4cac19e37d83d4848cd7b229bf6fedd35437816b048b946",
+      "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --square-path-side-m 0.15 --body-heading-deg -45 --output /tmp/arachne_square_heading_minus45_settled_20260924.json",
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "square_path_commands_recorded": true,
+        "square_waypoints_reached_within_8_cm": true,
+        "square_heading_injection_observed": true,
+        "square_target_heading_recorded": true,
+        "square_path_heading_error_below_1_deg": true,
+        "square_reference_speed_within_limit": true,
+        "square_tracking_error_within_10_cm": true,
+        "square_corner_speed_below_10_cm_s": true
+      },
+      "metrics": {
+        "sample_count": 1161,
+        "maximum_altitude_m": 1.303238344368013,
+        "final_altitude_m": 0.020000001144430565,
+        "maximum_horizontal_displacement_m": 0.26120468645012246,
+        "saturated_motor_updates": 0,
+        "peak_tilt_deg": 2.7238241485055728,
+        "peak_abs_yaw_deg": 45.02784099521057,
+        "peak_abs_yaw_error_deg": 0.027840995210567602,
+        "limited_motor_fraction": 0.0,
+        "hover_max_error_m": 0.033555593079267254
+      },
+      "square_path_test": {
+        "scope": "SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING",
+        "world_axis_order": [
+          "+X",
+          "+Y",
+          "-X",
+          "-Y"
+        ],
+        "target_heading_deg": -45.0,
+        "observed_initial_heading_deg": -45.000000000000014,
+        "side_m": 0.15,
+        "leg_duration_s": 3.5,
+        "move_duration_s": 2.0,
+        "corner_settle_duration_s": 1.5,
+        "peak_reference_speed_m_s": 0.14062499999987677,
+        "reference_speed_limit_m_s": 0.140625,
+        "maximum_tracking_error_m": 0.06548448385500802,
+        "waypoints": {
+          "FORWARD": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.013731373271140731,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.0111474534231456
+          },
+          "LEFT": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.013914683667772638,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.012362030433673402
+          },
+          "BACKWARD": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.014063893694862706,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.012325174559576291
+          },
+          "RIGHT_TO_ORIGIN": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.014052729527112893,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.012342995912375317
+          }
+        },
+        "peak_abs_heading_deg": 45.02784099521057,
+        "peak_abs_heading_error_deg": 0.027840995210567602,
+        "linear_velocity_frame": "WORLD"
+      }
+    },
+    {
+      "label": "final_zero",
+      "final_configuration": true,
+      "raw_local_file": "/tmp/arachne_square_heading_zero_settled_20260924.json",
+      "raw_sha256": "35abc50834412cbb04e1c61248ec22a247e417311eff5907973fc635b423d637",
+      "command": "ros2 run arachne_hx6_control gazebo_motor_scenario --reset-world --square-path-side-m 0.15 --body-heading-deg 0 --output /tmp/arachne_square_heading_zero_settled_20260924.json",
+      "scenario_result": "PASS",
+      "acceptance_checks": {
+        "yaw_within_10_deg": true,
+        "limited_motor_fraction_below_5_percent": true,
+        "hover_within_20_cm": true,
+        "all_phases_observed": true,
+        "square_path_commands_recorded": true,
+        "square_waypoints_reached_within_8_cm": true,
+        "square_heading_injection_observed": true,
+        "square_target_heading_recorded": true,
+        "square_path_heading_error_below_1_deg": true,
+        "square_reference_speed_within_limit": true,
+        "square_tracking_error_within_10_cm": true,
+        "square_corner_speed_below_10_cm_s": true
+      },
+      "metrics": {
+        "sample_count": 1162,
+        "maximum_altitude_m": 1.3015934060109347,
+        "final_altitude_m": 0.020000000085014544,
+        "maximum_horizontal_displacement_m": 0.26106596747037236,
+        "saturated_motor_updates": 0,
+        "peak_tilt_deg": 2.697449836530764,
+        "peak_abs_yaw_deg": 0.013564769279857954,
+        "peak_abs_yaw_error_deg": 0.013564769279857954,
+        "limited_motor_fraction": 0.0,
+        "hover_max_error_m": 0.03443046660141347
+      },
+      "square_path_test": {
+        "scope": "SMOOTH_WORLD_AXIS_SQUARE_WITH_HELD_BODY_HEADING",
+        "world_axis_order": [
+          "+X",
+          "+Y",
+          "-X",
+          "-Y"
+        ],
+        "target_heading_deg": 0.0,
+        "observed_initial_heading_deg": -1.9641482252539235e-17,
+        "side_m": 0.15,
+        "leg_duration_s": 3.5,
+        "move_duration_s": 2.0,
+        "corner_settle_duration_s": 1.5,
+        "peak_reference_speed_m_s": 0.14062499909194884,
+        "reference_speed_limit_m_s": 0.140625,
+        "maximum_tracking_error_m": 0.06564573998631124,
+        "waypoints": {
+          "FORWARD": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.01454712694160908,
+            "sample_count": 174,
+            "corner_speed_m_s": 0.008415426969197446
+          },
+          "LEFT": {
+            "target_x_m": 0.15,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.014709227898011273,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.010400820272058275
+          },
+          "BACKWARD": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.15,
+            "endpoint_error_m": 0.014897288939474864,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.010211571365445494
+          },
+          "RIGHT_TO_ORIGIN": {
+            "target_x_m": 0.0,
+            "target_y_m": 0.0,
+            "endpoint_error_m": 0.0148876467964462,
+            "sample_count": 175,
+            "corner_speed_m_s": 0.010223770092808828
+          }
+        },
+        "peak_abs_heading_deg": 0.013564769279857954,
+        "peak_abs_heading_error_deg": 0.013564769279857954,
+        "linear_velocity_frame": "WORLD"
+      }
+    }
+  ],
+  "interpretation": [
+    "Odometry linear twist is body-frame; rotate all three components into world frame.",
+    "Angular rates remain body-frame for the body torque controller.",
+    "The initial +45 run failed because corner speed was 0.100697565 m/s.",
+    "Corner hold increased from 1.0 to 1.5 s; gains and acceptance limits unchanged.",
+    "Earlier velocity_x_m_s and velocity_y_m_s samples were body-frame; new samples carry WORLD.",
+    "Historical CLOCKWISE scope was a labeling error: +X,+Y,-X,-Y is counterclockwise viewed from +Z."
+  ],
+  "limitations": [
+    "Three single live runs at final settings; no repeatability or arbitrary-yaw qualification.",
+    "Each corner speed is measured at the final sample, not a sustained settling guarantee.",
+    "Parameters are unmeasured; no physical flight, wind, sensor-noise or procurement qualification.",
+    "Gazebo GUI process was running; user visual confirmation was not received this turn.",
+    "Raw data is local in /tmp and may be removed on restart; this summary is versioned."
+  ]
+}

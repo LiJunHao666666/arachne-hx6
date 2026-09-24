@@ -119,3 +119,18 @@ check_urdf /tmp/arachne_hx6.urdf
 - femur 与旋翼盘最近约 2 cm，必须进行扫掠体积和自碰撞分析。
 - 当前没有旋翼动力学、飞行控制或模式切换。
 - 当前版本不允许作为硬件采购依据。
+
+## 独立六旋翼飞行仿真支线（ANALYSIS_ONLY）
+
+无下肢六旋翼的 Gazebo 场景、起飞—悬停—降落、断链降落及证据记录
+见 [Gazebo 基线](docs/GAZEBO_FLIGHT_BASELINE.md) 和
+[Exercise 07](docs/HEXA_EXERCISE_07.md)。新增的
+[Exercise 08](docs/HEXA_EXERCISE_08.md) 将六路电机、姿态、高度与
+横向扰动放入同一离线规划模型，运行方式：
+
+```bash
+python3 scripts/hexa_coupled_flight.py --output /tmp/arachne_coupled_flight.json
+```
+
+该支线不修改 G1 六足模型或 G3 正式门控；所有参数仍为规划假设。
+仿真通过不等于实物可飞或采购获批，`procurement_allowed` 保持 `false`。
